@@ -1,9 +1,12 @@
+// File: lib/screens/main_screen.dart - COMPLETE FIXED VERSION
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/cart_provider.dart'; // TAMBAHAN: Import CartProvider
-// Import screen yang diperlukan - sesuaikan dengan nama file Anda yang sebenarnya
+import '../providers/cart_provider.dart';
+import '../services/transaction_service.dart';
+import '../models/transaction.dart' as models;
+// Import screen yang diperlukan
 import 'home_screen.dart';  
 import 'news_screen.dart';
 import 'transaction_screen.dart';
@@ -18,45 +21,139 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  bool _hasTriedNameFix = false;
+  bool _hasHandledInitialArgs = false;
   
   // Daftar halaman yang akan ditampilkan
-  late final List<Widget> _screens;
+  final List<Widget> _screens = [
+    const HomeScreen(),       // Index 0
+    const NewsScreen(),       // Index 1
+    const TransactionScreen(showBackButton: false), // Index 2
+    const SettingScreen(),    // Index 3
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Initialize screens setelah context tersedia
-    _screens = [
-      const HomeScreen(),       // Index 0
-      const NewsScreen(),       // Index 1
-      const TransactionScreen(), // Index 2
-      const SettingScreen(),    // Index 3
-    ];
-    
-    // TAMBAHAN: Refresh cart saat MainScreen dibuka
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      print('🔄 MainScreen: Refreshing cart on init...');
-      cartProvider.refreshCart();
-    });
+    print('🔄 MainScreen initState');
   }
 
-  void _onNavItemTapped(int index) {
-    // PERBAIKAN: Jika tap pada Orders (index 2), navigasi ke cart
-    if (index == 2) {
-      Navigator.pushNamed(context, '/cart');
-    } else {
-      setState(() {
-        _selectedIndex = index;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Handle arguments dari navigation hanya sekali dan dengan guard
+    if (!_hasHandledInitialArgs) {
+      _hasHandledInitialArgs = true;
+      
+      // Delay handling untuk menghindari loop
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _handleInitialArguments();
+        }
       });
+    }
+  }
+
+  // FIXED: MainScreen _handleInitialArguments method
+// Ganti method ini di MainScreen
+
+void _handleInitialArguments() {
+  if (!mounted) return;
+  
+  final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+  
+  if (arguments != null) {
+    print('🔄 MainScreen received arguments: $arguments');
+    
+    // Handle selectedIndex dengan validation
+    if (arguments.containsKey('selectedIndex')) {
+      final newIndex = arguments['selectedIndex'] as int;
+      print('🔄 Setting selected index to: $newIndex');
+      
+      if (newIndex >= 0 && newIndex < 4 && mounted) {
+        setState(() {
+          _selectedIndex = newIndex;
+        });
+        
+        // FIXED: Force refresh jika ke Orders tab
+        if (newIndex == 2) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              try {
+                final transactionService = Provider.of<TransactionService>(context, listen: false);
+                transactionService.fetchUserTransactions().then((_) {
+                  print('✅ Transactions refreshed after tab switch');
+                });
+              } catch (e) {
+                print('❌ Error refreshing transactions: $e');
+              }
+            }
+          });
+        }
+      }
+    }
+    
+    // Handle force refresh
+    if (arguments.containsKey('forceRefresh') && arguments['forceRefresh'] == true) {
+      print('🔄 Force refresh requested');
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          try {
+            final transactionService = Provider.of<TransactionService>(context, listen: false);
+            transactionService.fetchUserTransactions().then((_) {
+              print('✅ Force refresh completed');
+            });
+          } catch (e) {
+            print('❌ Error in force refresh: $e');
+          }
+        }
+      });
+    }
+  }
+}
+
+  void _onNavItemTapped(int index) {
+    print('🔄 Tab changed to index: $index');
+    
+    // Navigasi normal ke semua tab, termasuk Orders (TransactionScreen)
+    setState(() {
+      _selectedIndex = index;
+    });
+    
+    // Jika navigate ke TransactionScreen, refresh data
+    if (index == 2 && mounted) {
+      print('🔄 Navigating to TransactionScreen, refreshing data...');
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          try {
+            final transactionService = Provider.of<TransactionService>(context, listen: false);
+            transactionService.fetchUserTransactions();
+          } catch (e) {
+            print('❌ Error refreshing transactions on tab switch: $e');
+          }
+        }
+      });
+    }
+  }
+
+  // Safe method untuk get pending transactions count
+  int _getPendingTransactionsCount(TransactionService transactionService) {
+    try {
+      return transactionService.transactions.where((t) => 
+        t.status == models.TransactionStatus.pending || 
+        t.status == models.TransactionStatus.paid || 
+        t.status == models.TransactionStatus.shipped
+      ).length;
+    } catch (e) {
+      print('❌ Error getting pending transactions count: $e');
+      return 0;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<AuthProvider, CartProvider>(
-      builder: (context, authProvider, cartProvider, child) {
+    return Consumer3<AuthProvider, CartProvider, TransactionService>(
+      builder: (context, authProvider, cartProvider, transactionService, child) {
         // Debug print untuk melihat status user dan cart
         print('🏠 MainScreen - Auth Status:');
         print('  - isLoggedIn: ${authProvider.isLoggedIn}');
@@ -68,6 +165,9 @@ class _MainScreenState extends State<MainScreen> {
         print('  - Cart items: ${cartProvider.items.length}');
         print('  - Item count: ${cartProvider.itemCount}');
         print('  - Is loading: ${cartProvider.isLoading}');
+        print('📋 MainScreen - Transaction Status:');
+        print('  - Transaction count: ${transactionService.transactions.length}');
+        print('  - Is loading: ${transactionService.isLoading}');
         
         // Jika user belum login dengan benar, redirect ke login
         if (!authProvider.isLoggedIn) {
@@ -88,14 +188,15 @@ class _MainScreenState extends State<MainScreen> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
+              // FAB tetap untuk ke cart
               Navigator.pushNamed(context, '/cart');
             },
             backgroundColor: Colors.orange,
             child: Stack(
-              clipBehavior: Clip.none, // PENTING: Agar badge tidak terpotong
+              clipBehavior: Clip.none,
               children: [
                 const Icon(Icons.shopping_cart),
-                // PERBAIKAN: Cart badge dengan data real dari CartProvider
+                // Cart badge dengan data real dari CartProvider
                 if (cartProvider.itemCount > 0)
                   Positioned(
                     right: -6,
@@ -188,7 +289,7 @@ class _MainScreenState extends State<MainScreen> {
                               icon: Icons.receipt_long, 
                               label: "Orders",
                               selected: _selectedIndex == 2,
-                              badgeCount: cartProvider.itemCount, // PERBAIKAN: Gunakan data real
+                              badgeCount: _getPendingTransactionsCount(transactionService),
                             ),
                           ),
                         ),
@@ -215,7 +316,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// STANDARD NAV ITEM (tidak berubah)
+// STANDARD NAV ITEM
 class NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -252,7 +353,7 @@ class NavItem extends StatelessWidget {
   }
 }
 
-// TAMBAHAN: NAV ITEM DENGAN BADGE UNTUK ORDERS
+// NAV ITEM DENGAN BADGE UNTUK ORDERS
 class NavItemWithBadge extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -273,7 +374,7 @@ class NavItemWithBadge extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Stack(
-          clipBehavior: Clip.none, // PENTING: Agar badge tidak terpotong
+          clipBehavior: Clip.none,
           children: [
             Icon(
               icon,

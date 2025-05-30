@@ -1,4 +1,4 @@
-// File: lib/main.dart
+// File: lib/main.dart - PASTIKAN IMPORT INI ADA
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +12,12 @@ import 'providers/auth_provider.dart';
 // Import Services
 import 'services/transaction_service.dart';
 
-// Import semua screen
+// Import Utils
+import 'utils/food_data_script.dart';
+import 'utils/kitchen_ingredients_data_script.dart';
+import 'utils/ramadhan_data_script.dart';
+
+// Import semua screen - PASTIKAN SEMUA ADA
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -43,6 +48,20 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('🔥 Firebase initialized successfully');
+    
+    // Initialize product data
+    print('📦 Initializing product data...');
+    try {
+      await Future.wait([
+        FoodDataScript.initializeFoodProducts(),
+        KitchenIngredientsDataScript.initializeKitchenIngredientsProducts(),
+        RamadhanDataScript.initializeRamadhanProducts(),
+      ]);
+      print('✅ All product data initialized successfully');
+    } catch (e) {
+      print('⚠️ Error initializing product data: $e');
+    }
+    
   } catch (e) {
     print('❌ Firebase initialization error: $e');
   }
@@ -102,7 +121,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
-          '/main': (context) => const MainScreen(),
+          '/main': (context) => const MainScreen(), // PASTIKAN ROUTE INI ADA
           '/home': (context) => const HomeScreen(),
           
           // Category screens

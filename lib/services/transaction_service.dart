@@ -1,9 +1,9 @@
-// File: lib/services/transaction_service.dart
-import 'package:flutter/foundation.dart';
+// File: lib/services/transaction_service.dart - STOP LOOP VERSION
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/transaction.dart' as models; // Menggunakan alias untuk model Transaction
-import '../models/cart_item.dart'; // Model CartItem yang sudah ada
+import '../models/transaction.dart' as models;
+import '../models/cart_item.dart';
 
 class TransactionService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -11,188 +11,278 @@ class TransactionService extends ChangeNotifier {
 
   List<models.Transaction> _transactions = [];
   bool _isLoading = false;
-  String? _userId;
+  String? _lastUserId;
+  bool _isDisposed = false; // TAMBAHAN: Flag untuk prevent calls after dispose
 
-  List<models.Transaction> get transactions => List.unmodifiable(_transactions);
+  List<models.Transaction> get transactions => _transactions;
   bool get isLoading => _isLoading;
 
-  TransactionService() {
-    _auth.authStateChanges().listen(_onAuthStateChanged);
-  }
-
-  Future<void> _onAuthStateChanged(User? user) async {
-    if (user != null) {
-      _userId = user.uid;
-      print('TransactionService: User authenticated, userId: $_userId. Fetching transactions...');
-      // Secara default, kita tidak langsung fetch semua transaksi saat login
-      // kecuali jika memang dibutuhkan. Biasanya user akan ke halaman riwayat transaksi.
-      // await fetchUserTransactions();
-    } else {
-      _userId = null;
-      _transactions.clear();
-      notifyListeners();
-      print('TransactionService: User logged out. Local transactions cleared.');
-    }
-  }
-
-  // Membuat transaksi baru di Firestore
+  // FIXED: Create Transaction dengan detailed debugging
   Future<String?> createTransaction({
     required List<CartItem> items,
     required double totalAmount,
-    required String userId, // Bisa juga diambil dari _userId jika sudah pasti ada
-    String? shippingAddress,
-    String? notes,
-    String? paymentMethod,
-    models.TransactionStatus status = models.TransactionStatus.pending, // Default status
+    required String userId,
+    required String shippingAddress,
+    required String paymentMethod,
+    required models.TransactionStatus status,
   }) async {
-    if (items.isEmpty) {
-      print('TransactionService: Cannot create transaction with empty items.');
-      return null;
-    }
-    if (_userId == null && userId.isEmpty) {
-        print('TransactionService: User ID is required to create a transaction.');
-        return null;
-    }
-
-    final currentUserId = _userId ?? userId; // Utamakan _userId dari auth state
-
-    _isLoading = true;
-    notifyListeners();
-
+    if (_isDisposed) return null;
+    
     try {
-      // Membuat ID unik untuk transaksi
-      DocumentReference docRef = _firestore.collection('transactions').doc();
+      print('🔄 TransactionService.createTransaction started');
+      print('  - User ID: $userId');
+      print('  - Items count: ${items.length}');
+      print('  - Total: $totalAmount');
+      print('  - Address: $shippingAddress');
+      print('  - Payment: $paymentMethod');
+      
+      // VALIDATION: Check user authentication
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        print('❌ No authenticated user found');
+        return null;
+      }
+      if (currentUser.uid != userId) {
+        print('❌ User ID mismatch: ${currentUser.uid} vs $userId');
+        return null;
+      }
+      
+      // VALIDATION: Check items
+      if (items.isEmpty) {
+        print('❌ No items in transaction');
+        return null;
+      }
 
-      final newTransaction = models.Transaction(
-        id: docRef.id, // Gunakan ID yang di-generate Firestore
-        userId: currentUserId,
-        items: items, // List<CartItem>
+      // Convert CartItems to Transaction items
+      List<models.TransactionItem> transactionItems = items.map((cartItem) {
+        return models.TransactionItem(
+          id: cartItem.id,
+          name: cartItem.name,
+          price: cartItem.price,
+          quantity: cartItem.quantity,
+          imageUrl: cartItem.imageUrl,
+          subtitle: cartItem.subtitle,
+        );
+      }).toList();
+
+      // Create transaction object
+      final transaction = models.Transaction(
+        id: '', // Will be set by Firestore
+        userId: userId,
+        items: transactionItems,
         totalAmount: totalAmount,
         status: status,
-        createdAt: DateTime.now(), // Akan dikonversi ke Timestamp
+        createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         shippingAddress: shippingAddress,
-        notes: notes,
         paymentMethod: paymentMethod,
       );
 
-      await docRef.set(newTransaction.toFirestore());
-      print('TransactionService: Transaction ${newTransaction.id} created successfully for user $currentUserId.');
-
-      // Tambahkan ke list lokal jika diperlukan, atau biarkan fetchUserTransactions mengambilnya
-      // _transactions.insert(0, newTransaction);
-
-      _isLoading = false;
-      notifyListeners(); // Notify setelah loading selesai
-      return newTransaction.id;
-    } catch (e) {
-      print('TransactionService: Error creating transaction: $e');
-      _isLoading = false;
-      notifyListeners();
+      print('🔄 Creating transaction document...');
+      
+      // Use batch write for atomic operation
+      final batch = _firestore.batch();
+      final docRef = _firestore.collection('transactions').doc();
+      
+      // Set the transaction ID
+      final transactionWithId = transaction.copyWith(id: docRef.id);
+      
+      // Convert to map for Firestore
+      final transactionData = transactionWithId.toFirestore();
+      
+      print('🔄 Transaction data to save:');
+      print('  - ID: ${docRef.id}');
+      print('  - User ID: ${transactionData['userId']}');
+      print('  - Items: ${transactionData['items']}');
+      print('  - Total: ${transactionData['totalAmount']}');
+      
+      batch.set(docRef, transactionData);
+      
+      // Execute batch
+      await batch.commit();
+      
+      print('✅ Transaction saved successfully with ID: ${docRef.id}');
+      
+      // Add to local list immediately untuk UI responsiveness
+      if (!_isDisposed) {
+        _transactions.insert(0, transactionWithId);
+        notifyListeners();
+      }
+      
+      return docRef.id;
+      
+    } catch (e, stackTrace) {
+      print('❌ Error creating transaction: $e');
+      print('❌ Stack trace: $stackTrace');
       return null;
     }
   }
 
-  // Mengambil semua transaksi untuk pengguna yang sedang login
-  Future<void> fetchUserTransactions() async {
-    if (_userId == null) {
-      print('TransactionService: Cannot fetch transactions, user not logged in.');
-      _transactions.clear(); // Pastikan lokal kosong jika tidak ada user
-      notifyListeners();
+  // FIXED: Simple fetch tanpa streaming - untuk stop loop
+  // OPTIONAL: TransactionService dengan query asli (karena index sudah enabled)
+
+// GANTI method fetchUserTransactions dengan ini:
+Future<void> fetchUserTransactions() async {
+  if (_isDisposed) return;
+  
+  try {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      print('❌ fetchUserTransactions: No authenticated user');
+      _transactions = [];
+      _lastUserId = null;
+      if (!_isDisposed) notifyListeners();
       return;
     }
 
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      print('TransactionService: Fetching transactions for userId: $_userId');
-      QuerySnapshot snapshot = await _firestore
-          .collection('transactions')
-          .where('userId', isEqualTo: _userId)
-          .orderBy('createdAt', descending: true) // Tampilkan yang terbaru di atas
-          .get();
-
-      _transactions = snapshot.docs
-          .map((doc) => models.Transaction.fromFirestore(doc))
-          .toList();
-      print('TransactionService: Fetched ${_transactions.length} transactions from Firestore.');
-    } catch (e) {
-      print('TransactionService: Error fetching user transactions: $e');
+    // Check if user changed
+    if (_lastUserId != currentUser.uid) {
+      print('🔄 User changed from $_lastUserId to ${currentUser.uid}');
       _transactions = [];
-    } finally {
-      _isLoading = false;
+      _lastUserId = currentUser.uid;
+    }
+
+    print('🔄 Fetching transactions for user: ${currentUser.uid}');
+    if (!_isDisposed) {
+      _isLoading = true;
       notifyListeners();
     }
-  }
 
-  // Mendapatkan stream transaksi pengguna (lebih reaktif)
-  Stream<List<models.Transaction>> getUserTransactionsStream() {
-    if (_userId == null) {
-      return Stream.value([]);
-    }
-    return _firestore
+    // ✅ SEKARANG BISA PAKAI QUERY ASLI (INDEX SUDAH ENABLED)
+    final querySnapshot = await _firestore
         .collection('transactions')
-        .where('userId', isEqualTo: _userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-          _transactions = snapshot.docs.map((doc) => models.Transaction.fromFirestore(doc)).toList();
-          // notifyListeners(); // Sama seperti di CartService, ini bisa opsional
-          return _transactions;
-        })
-        .handleError((error) {
-          print('TransactionService: Error in user transactions stream: $error');
-          _transactions = [];
-          // notifyListeners();
-          return <models.Transaction>[];
-        });
-  }
+        .where('userId', isEqualTo: currentUser.uid)
+        .orderBy('createdAt', descending: true) // ✅ Ini sekarang bisa dipakai
+        .limit(50)
+        .get();
 
+    print('🔍 Query executed, found ${querySnapshot.docs.length} documents');
 
-  // Mengupdate status transaksi (misalnya oleh admin atau sistem pembayaran)
-  Future<void> updateTransactionStatus(String transactionId, models.TransactionStatus newStatus) async {
-    // Tidak perlu _userId di sini karena admin mungkin yang mengupdate
-    _isLoading = true;
-    // notifyListeners(); // Mungkin tidak perlu jika ini bukan operasi yg langsung dilihat user
-
-    try {
-      await _firestore.collection('transactions').doc(transactionId).update({
-        'status': newStatus.toString().split('.').last, // Simpan sebagai string
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      print('TransactionService: Transaction $transactionId status updated to $newStatus.');
-      // Jika transaksi ini ada di list lokal, update juga
-      final index = _transactions.indexWhere((t) => t.id == transactionId);
-      if (index != -1) {
-        // Perlu membuat instance baru karena Transaction mungkin immutable
-        // atau tambahkan method copyWith ke Transaction model
-         _transactions[index] = _transactions[index].copyWith(status: newStatus, updatedAt: DateTime.now());
+    List<models.Transaction> fetchedTransactions = [];
+    
+    for (var doc in querySnapshot.docs) {
+      try {
+        print('🔍 Processing document: ${doc.id}');
+        final data = doc.data();
+        print('  - Data keys: ${data.keys.toList()}');
+        print('  - User ID in doc: ${data['userId']}');
+        print('  - Status: ${data['status']}');
+        print('  - Total: ${data['totalAmount']}');
+        
+        final transaction = models.Transaction.fromFirestore(doc);
+        fetchedTransactions.add(transaction);
+        print('✅ Successfully parsed transaction: ${transaction.id}');
+      } catch (e) {
+        print('❌ Error parsing transaction ${doc.id}: $e');
+        print('❌ Document data: ${doc.data()}');
       }
-    } catch (e) {
-      print('TransactionService: Error updating transaction status for $transactionId: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners(); // Notify setelah selesai, agar UI yang menampilkan detail transaksi terupdate
     }
-  }
 
-  // Mengambil detail satu transaksi
-  Future<models.Transaction?> getTransactionDetails(String transactionId) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      DocumentSnapshot doc = await _firestore.collection('transactions').doc(transactionId).get();
-      if (doc.exists) {
-        return models.Transaction.fromFirestore(doc);
+    // Data sudah tersortir dari Firestore, tidak perlu manual sort lagi
+    if (!_isDisposed) {
+      _transactions = fetchedTransactions;
+      print('✅ Total transactions loaded: ${_transactions.length}');
+      
+      // Debug: Print all transaction IDs and details
+      for (int i = 0; i < _transactions.length; i++) {
+        final tx = _transactions[i];
+        print('  [$i] ${tx.id.substring(0, 8)}... - ${tx.statusString} - Rp${tx.totalAmount} - Items: ${tx.items.length}');
       }
-      return null;
-    } catch (e) {
-      print('TransactionService: Error fetching transaction details for $transactionId: $e');
-      return null;
-    } finally {
+    }
+
+  } catch (e, stackTrace) {
+    print('❌ Error fetching transactions: $e');
+    print('❌ Stack trace: $stackTrace');
+    if (!_isDisposed) {
+      _transactions = [];
+    }
+  } finally {
+    if (!_isDisposed) {
       _isLoading = false;
       notifyListeners();
     }
+  }
+}
+
+  // REMOVED: getUserTransactionsStream untuk stop looping
+  // Sekarang hanya pakai simple fetch
+
+  // FIXED: Clear transactions dengan dispose check
+  void clearTransactions() {
+    if (_isDisposed) return;
+    print('🔄 Clearing transactions');
+    _transactions = [];
+    notifyListeners();
+  }
+
+  // FIXED: Clear pada logout
+  void clearOnLogout() {
+    if (_isDisposed) return;
+    print('🔄 Clearing transactions on logout');
+    _transactions = [];
+    _lastUserId = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // FIXED: Get pending transactions count
+  int get pendingTransactionsCount {
+    try {
+      if (_isDisposed) return 0;
+      return _transactions.where((tx) => 
+        tx.status == models.TransactionStatus.pending ||
+        tx.status == models.TransactionStatus.paid ||
+        tx.status == models.TransactionStatus.shipped
+      ).length;
+    } catch (e) {
+      print('❌ Error calculating pending transactions count: $e');
+      return 0;
+    }
+  }
+
+  // Helper method untuk debugging
+  Future<void> debugFirestoreConnection() async {
+    if (_isDisposed) return;
+    try {
+      print('🔍 Testing Firestore connection...');
+      final testDoc = await _firestore.collection('test').doc('test').get();
+      print('✅ Firestore connection OK');
+      
+      // Test transactions collection access
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        final transactionsQuery = await _firestore
+            .collection('transactions')
+            .where('userId', isEqualTo: currentUser.uid)
+            .limit(1)
+            .get();
+        print('✅ Transactions collection accessible, found ${transactionsQuery.docs.length} docs');
+      }
+    } catch (e) {
+      print('❌ Firestore connection failed: $e');
+    }
+  }
+
+  // Get transaction by ID
+  models.Transaction? getTransactionById(String id) {
+    try {
+      if (_isDisposed) return null;
+      return _transactions.firstWhere((tx) => tx.id == id);
+    } catch (e) {
+      print('❌ Transaction not found: $id');
+      return null;
+    }
+  }
+
+  // Get transactions by status
+  List<models.Transaction> getTransactionsByStatus(models.TransactionStatus status) {
+    if (_isDisposed) return [];
+    return _transactions.where((tx) => tx.status == status).toList();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

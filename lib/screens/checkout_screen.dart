@@ -1,4 +1,4 @@
-// File: lib/screens/checkout_screen.dart
+// File: lib/screens/checkout_screen.dart - COMPLETE FIXED VERSION
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +7,8 @@ import '../services/transaction_service.dart';
 import '../models/cart_item.dart';
 import '../models/transaction.dart' as models;
 import '../providers/auth_provider.dart';
-import '../screens/transaction_screen.dart';
+import '../screens/main_screen.dart';
+import 'package:intl/intl.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedBank = '';
   bool _isProcessingPayment = false;
   String _deliveryAddress = '';
+  bool _isPaymentCompleted = false; // Flag untuk mencegah auto-redirect ke cart
 
   String _contactPhone = '';
   String _contactEmail = '';
@@ -43,7 +45,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     
     if (authProvider.isLoggedIn && authProvider.userModel != null) {
       setState(() {
-        // Ambil data dari userModel di AuthProvider
         _contactPhone = authProvider.userModel!.telepon.trim().isNotEmpty
             ? authProvider.userModel!.telepon.trim()
             : '+6281000000';
@@ -51,12 +52,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ? authProvider.userModel!.email.trim()
             : 'emailsample@example.com';
         
-        // PERBAIKAN: Ambil alamat dari database user menggunakan method yang sudah ada
         _deliveryAddress = authProvider.userModel!.alamat?.trim().isNotEmpty == true
             ? authProvider.userModel!.alamat!.trim()
             : '';
             
-        // Set ke controller
         _phoneController.text = _contactPhone;
         _emailController.text = _contactEmail;
         _addressController.text = _deliveryAddress;
@@ -80,11 +79,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Cek jika ada arguments dari route (misal dari cart screen)
     final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments.containsKey('address')) {
       String routeAddress = arguments['address'] as String? ?? '';
-      // Hanya gunakan address dari route jika user belum punya alamat di database
       if (_deliveryAddress.isEmpty && routeAddress.isNotEmpty) {
         setState(() {
           _deliveryAddress = routeAddress;
@@ -110,8 +107,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return Consumer3<CartProvider, TransactionService, AuthProvider>(
       builder: (context, cartProvider, transactionService, authProvider, child) {
-        // Validasi jika cart kosong, redirect ke cart screen
-        if (cartProvider.items.isEmpty && !cartProvider.isLoading) {
+        // FIXED: Hanya redirect ke cart jika cart kosong DAN payment belum selesai
+        if (cartProvider.items.isEmpty && !cartProvider.isLoading && !_isPaymentCompleted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.pushReplacementNamed(context, '/cart');
           });
@@ -235,7 +232,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                         ),
                         
-                        // Bottom Payment Bar
                         if (cartProvider.items.isNotEmpty)
                           _buildBottomPaymentBar(
                             finalTotalAmount,
@@ -253,6 +249,362 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // IMPROVED: Process Payment Method dengan modal sukses yang tidak bisa di-dismiss
+  Future<void> _processPayment(
+    double finalTotalAmount,
+    CartProvider cartProvider,
+    TransactionService transactionService,
+    AuthProvider authProvider,
+    Color primaryColor,
+  ) async {
+    if (!authProvider.isLoggedIn || authProvider.firebaseUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Anda harus login untuk melanjutkan.")),
+      );
+      return;
+    }
+
+    setState(() => _isProcessingPayment = true);
+
+    try {
+      print('🛒 Creating transaction...');
+      print('  - Total: $finalTotalAmount');
+      print('  - Items: ${cartProvider.items.length}');
+      print('  - Address: $_deliveryAddress');
+      print('  - Payment: $_selectedPaymentMethod');
+      
+      // STEP 1: Create Transaction
+      String? transactionId = await transactionService.createTransaction(
+        items: cartProvider.items,
+        totalAmount: finalTotalAmount,
+        userId: authProvider.firebaseUser!.uid,
+        shippingAddress: _deliveryAddress,
+        paymentMethod: "$_selectedPaymentMethod${_selectedBank.isNotEmpty ? ' - $_selectedBank' : ''}",
+        status: _selectedPaymentMethod == 'COD' 
+            ? models.TransactionStatus.pending 
+            : models.TransactionStatus.pending,
+      );
+
+      if (transactionId != null) {
+        print('✅ Transaction created successfully: $transactionId');
+        
+        // STEP 2: Set payment completed flag SEBELUM clear cart
+        setState(() {
+          _isPaymentCompleted = true;
+        });
+        
+        // STEP 3: Refresh Transaction List
+        print('🔄 Refreshing transaction list...');
+        await transactionService.fetchUserTransactions();
+        print('✅ Transaction list refreshed');
+        
+        // STEP 4: Clear Cart SETELAH transaction berhasil
+        await cartProvider.clearCart();
+        print('✅ Cart cleared');
+        
+        if (mounted) {
+          // STEP 5: Show Success Modal yang tidak bisa di-dismiss
+          _showSuccessModal(context, primaryColor, transactionId, transactionService);
+        }
+      } else {
+        print('❌ Transaction creation failed');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Text("Gagal membuat pesanan. Coba lagi.", style: GoogleFonts.poppins()),
+                ],
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error processing payment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Error: ${e.toString()}",
+                    style: GoogleFonts.poppins(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+      }
+    }
+  }
+
+// FINAL FIX: Perbaiki CheckoutScreen Success Modal - Stop Looping
+
+// 1. TAMBAHKAN import ini di atas file checkout_screen.dart
+
+// FIXED: Success Modal Navigation - Direct ke Orders Tab
+// Ganti method _showSuccessModal di CheckoutScreen
+
+void _showSuccessModal(
+  BuildContext context, 
+  Color primaryColor, 
+  String transactionId,
+  TransactionService transactionService,
+) {
+  String paymentMethod = _selectedPaymentMethod;
+  String additionalInfo = '';
+  
+  if (_selectedPaymentMethod == 'Transfer Bank' && _selectedBank.isNotEmpty) {
+    additionalInfo = 'via $_selectedBank';
+  } else if (_selectedPaymentMethod == 'COD') {
+    additionalInfo = 'Bayar saat barang tiba';
+  }
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => PopScope(
+      canPop: false,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 16,
+        child: Container(
+          padding: const EdgeInsets.all(28.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                primaryColor.withOpacity(0.02),
+              ],
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success Animation Icon
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      primaryColor.withOpacity(0.1),
+                      primaryColor.withOpacity(0.2),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 55,
+                  color: primaryColor,
+                ),
+              ),
+              const SizedBox(height: 28),
+              
+              // Success Title
+              Text(
+                '🎉 Pembayaran Berhasil!',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              
+              // Subtitle
+              Text(
+                'Pesanan Anda telah berhasil diproses',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              
+              // Transaction ID Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: primaryColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'ID Pesanan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '#${transactionId.length > 8 ? transactionId.substring(0, 8) : transactionId}...',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              
+              // Action Buttons
+              Column(
+                children: [
+                  // Primary Button - Lihat Pesanan (ke Transaction Screen)
+                  Container(
+                    width: double.infinity,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryColor, primaryColor.withOpacity(0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        print('🔄 Navigating to Orders tab with refresh');
+                        
+                        // FIXED: Close dialog first
+                        Navigator.of(context).pop();
+                        
+                        // Force refresh transaction data
+                        await transactionService.fetchUserTransactions();
+                        
+                        // Navigate to main screen and programmatically switch to Orders tab
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const MainScreen(),
+                            settings: RouteSettings(
+                              arguments: {
+                                'selectedIndex': 2, // Orders tab
+                                'forceRefresh': true,
+                              }
+                            ),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      icon: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 22),
+                      label: Text(
+                        'Lihat Pesanan Saya',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  // Secondary Button - Kembali Belanja (ke Home)
+                  Container(
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: primaryColor.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: TextButton.icon(
+                      onPressed: () {
+                        print('🔄 Navigating to home screen');
+                        
+                        Navigator.of(context).pop();
+                        
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const MainScreen(),
+                            settings: const RouteSettings(
+                              arguments: {'selectedIndex': 0}
+                            ),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      icon: Icon(
+                        Icons.shopping_bag_outlined, 
+                        color: primaryColor,
+                        size: 20,
+                      ),
+                      label: Text(
+                        'Lanjut Belanja',
+                        style: GoogleFonts.poppins(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+  // Rest of the methods remain the same...
   Widget _buildSectionTitle(String title, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -622,1016 +974,818 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? primaryColor : Colors.grey[400]!,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: primaryColor,
-                        ),
-                      ),
-                    )
-                  : const SizedBox(),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Pengiriman $label',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? primaryColor.withOpacity(0.1)
-                              : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          description,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected ? primaryColor : Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label == 'Standard'
-                        ? 'Pengiriman reguler'
-                        : 'Pengiriman cepat di hari yang sama',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              price,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: isSelected ? primaryColor : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+       child: Row(
+         children: [
+           Container(
+             width: 24,
+             height: 24,
+             decoration: BoxDecoration(
+               shape: BoxShape.circle,
+               border: Border.all(
+                 color: isSelected ? primaryColor : Colors.grey[400]!,
+                 width: 2,
+               ),
+             ),
+             child: isSelected
+                 ? Center(
+                     child: Container(
+                       width: 12,
+                       height: 12,
+                       decoration: BoxDecoration(
+                         shape: BoxShape.circle,
+                         color: primaryColor,
+                       ),
+                     ),
+                   )
+                 : const SizedBox(),
+           ),
+           const SizedBox(width: 12),
+           Expanded(
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Row(
+                   children: [
+                     Text(
+                       'Pengiriman $label',
+                       style: GoogleFonts.poppins(
+                         fontWeight: FontWeight.w600,
+                         fontSize: 14,
+                         color: Colors.black87,
+                       ),
+                     ),
+                     const SizedBox(width: 6),
+                     Container(
+                       padding: const EdgeInsets.symmetric(
+                         horizontal: 6,
+                         vertical: 2,
+                       ),
+                       decoration: BoxDecoration(
+                         color: isSelected
+                             ? primaryColor.withOpacity(0.1)
+                             : Colors.grey[100],
+                         borderRadius: BorderRadius.circular(4),
+                       ),
+                       child: Text(
+                         description,
+                         style: GoogleFonts.poppins(
+                           fontSize: 11,
+                           fontWeight: FontWeight.w500,
+                           color: isSelected ? primaryColor : Colors.grey[600],
+                         ),
+                       ),
+                     ),
+                   ],
+                 ),
+                 const SizedBox(height: 2),
+                 Text(
+                   label == 'Standard'
+                       ? 'Pengiriman reguler'
+                       : 'Pengiriman cepat di hari yang sama',
+                   style: GoogleFonts.poppins(
+                     fontSize: 12,
+                     color: Colors.grey[600],
+                   ),
+                 ),
+               ],
+             ),
+           ),
+           Text(
+             price,
+             style: GoogleFonts.poppins(
+               fontWeight: FontWeight.w600,
+               fontSize: 14,
+               color: isSelected ? primaryColor : Colors.black87,
+             ),
+           ),
+         ],
+       ),
+     ),
+   );
+ }
 
-  Widget _buildEstimationInfo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 0, 8),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_today_outlined,
-            size: 14,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Estimasi tiba: 2-4 hari kerja',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+ Widget _buildEstimationInfo() {
+   return Padding(
+     padding: const EdgeInsets.fromLTRB(4, 8, 0, 8),
+     child: Row(
+       children: [
+         Icon(
+           Icons.calendar_today_outlined,
+           size: 14,
+           color: Colors.grey[600],
+         ),
+         const SizedBox(width: 8),
+         Text(
+           'Estimasi tiba: 2-4 hari kerja',
+           style: GoogleFonts.poppins(
+             fontSize: 12,
+             color: Colors.grey[600],
+           ),
+         ),
+       ],
+     ),
+   );
+ }
 
-  Widget _buildPaymentOptions(Color primaryColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildPaymentOption(
-            label: 'Transfer Bank',
-            description: _selectedBank.isNotEmpty ? _selectedBank : 'Pilih bank',
-            icon: Icons.account_balance_outlined,
-            isSelected: _selectedPaymentMethod == 'Transfer Bank',
-            primaryColor: primaryColor,
-            onTap: () {
-              setState(() => _selectedPaymentMethod = 'Transfer Bank');
-              _showBankSelectionDialog(context, primaryColor);
-            },
-          ),
-          Divider(height: 1, color: Colors.grey[200]),
-          _buildPaymentOption(
-            label: 'Cash on Delivery (COD)',
-            description: 'Bayar saat barang tiba',
-            icon: Icons.payments_outlined,
-            isSelected: _selectedPaymentMethod == 'COD',
-            primaryColor: primaryColor,
-            onTap: () {
-              setState(() {
-                _selectedPaymentMethod = 'COD';
-                _selectedBank = '';
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
+ Widget _buildPaymentOptions(Color primaryColor) {
+   return Container(
+     decoration: BoxDecoration(
+       color: Colors.white,
+       borderRadius: BorderRadius.circular(16),
+       boxShadow: [
+         BoxShadow(
+           color: Colors.black.withOpacity(0.05),
+           blurRadius: 10,
+           offset: const Offset(0, 2),
+         ),
+       ],
+     ),
+     child: Column(
+       children: [
+         _buildPaymentOption(
+           label: 'Transfer Bank',
+           description: _selectedBank.isNotEmpty ? _selectedBank : 'Pilih bank',
+           icon: Icons.account_balance_outlined,
+           isSelected: _selectedPaymentMethod == 'Transfer Bank',
+           primaryColor: primaryColor,
+           onTap: () {
+             setState(() => _selectedPaymentMethod = 'Transfer Bank');
+             _showBankSelectionDialog(context, primaryColor);
+           },
+         ),
+         Divider(height: 1, color: Colors.grey[200]),
+         _buildPaymentOption(
+           label: 'Cash on Delivery (COD)',
+           description: 'Bayar saat barang tiba',
+           icon: Icons.payments_outlined,
+           isSelected: _selectedPaymentMethod == 'COD',
+           primaryColor: primaryColor,
+           onTap: () {
+             setState(() {
+               _selectedPaymentMethod = 'COD';
+               _selectedBank = '';
+             });
+           },
+         ),
+       ],
+     ),
+   );
+ }
 
-  Widget _buildPaymentOption({
-    required String label,
-    required String description,
-    required IconData icon,
-    required bool isSelected,
-    required Color primaryColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? primaryColor : Colors.grey[400]!,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: primaryColor,
-                        ),
-                      ),
-                    )
-                  : const SizedBox(),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: primaryColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    description,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (label == 'Transfer Bank')
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey[400],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+ Widget _buildPaymentOption({
+   required String label,
+   required String description,
+   required IconData icon,
+   required bool isSelected,
+   required Color primaryColor,
+   required VoidCallback onTap,
+ }) {
+   return InkWell(
+     onTap: onTap,
+     child: Padding(
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+       child: Row(
+         children: [
+           Container(
+             width: 24,
+             height: 24,
+             decoration: BoxDecoration(
+               shape: BoxShape.circle,
+               border: Border.all(
+                 color: isSelected ? primaryColor : Colors.grey[400]!,
+                 width: 2,
+               ),
+             ),
+             child: isSelected
+                 ? Center(
+                     child: Container(
+                       width: 12,
+                       height: 12,
+                       decoration: BoxDecoration(
+                         shape: BoxShape.circle,
+                         color: primaryColor,
+                       ),
+                     ),
+                   )
+                 : const SizedBox(),
+           ),
+           const SizedBox(width: 12),
+           Container(
+             padding: const EdgeInsets.all(8),
+             decoration: BoxDecoration(
+               color: primaryColor.withOpacity(0.1),
+               borderRadius: BorderRadius.circular(8),
+             ),
+             child: Icon(
+               icon,
+               color: primaryColor,
+               size: 20,
+             ),
+           ),
+           const SizedBox(width: 12),
+           Expanded(
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+                   label,
+                   style: GoogleFonts.poppins(
+                     fontWeight: FontWeight.w600,
+                     fontSize: 14,
+                     color: Colors.black87,
+                   ),
+                 ),
+                 Text(
+                   description,
+                   style: GoogleFonts.poppins(
+                     fontSize: 12,
+                     color: Colors.grey[600],
+                   ),
+                 ),
+               ],
+             ),
+           ),
+           if (label == 'Transfer Bank')
+             Icon(
+               Icons.arrow_forward_ios,
+               size: 16,
+               color: Colors.grey[400],
+             ),
+         ],
+       ),
+     ),
+   );
+ }
 
-  Widget _buildBottomPaymentBar(
-    double finalTotalAmount,
-    Color primaryColor,
-    CartProvider cartProvider,
-    TransactionService transactionService,
-    AuthProvider authProvider,
-  ) {
-    bool isCheckoutDisabled = cartProvider.items.isEmpty ||
-        _deliveryAddress.isEmpty ||
-        _contactPhone.isEmpty ||
-        _contactEmail.isEmpty ||
-        (_selectedPaymentMethod == 'Transfer Bank' && _selectedBank.isEmpty);
+ Widget _buildBottomPaymentBar(
+   double finalTotalAmount,
+   Color primaryColor,
+   CartProvider cartProvider,
+   TransactionService transactionService,
+   AuthProvider authProvider,
+ ) {
+   bool isCheckoutDisabled = cartProvider.items.isEmpty ||
+       _deliveryAddress.isEmpty ||
+       _contactPhone.isEmpty ||
+       _contactEmail.isEmpty ||
+       (_selectedPaymentMethod == 'Transfer Bank' && _selectedBank.isEmpty);
 
-    return Container(
-      padding: EdgeInsets.all(16).copyWith(
-        bottom: MediaQuery.of(context).padding.bottom + 16,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Total Payment',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Text(
-                  'Rp${finalTotalAmount.toStringAsFixed(0)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isCheckoutDisabled
-                    ? [Colors.grey[400]!, Colors.grey[300]!]
-                    : [primaryColor, primaryColor.withOpacity(0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: isCheckoutDisabled
-                  ? []
-                  : [
-                      BoxShadow(
-                        color: primaryColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-            ),
-            child: ElevatedButton(
-              onPressed: isCheckoutDisabled || _isProcessingPayment
-                  ? null
-                  : () => _processPayment(
-                        finalTotalAmount,
-                        cartProvider,
-                        transactionService,
-                        authProvider,
-                        primaryColor,
-                      ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                disabledBackgroundColor: Colors.transparent,
-                minimumSize: const Size(160, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _isProcessingPayment
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Pay Now',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+   return Container(
+     padding: EdgeInsets.all(16).copyWith(
+       bottom: MediaQuery.of(context).padding.bottom + 16,
+     ),
+     decoration: BoxDecoration(
+       color: Colors.white,
+       boxShadow: [
+         BoxShadow(
+           color: Colors.black.withOpacity(0.05),
+           blurRadius: 10,
+           offset: const Offset(0, -2),
+         ),
+       ],
+     ),
+     child: Row(
+       children: [
+         Expanded(
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               Text(
+                 'Total Payment',
+                 style: GoogleFonts.poppins(
+                   fontSize: 13,
+                   color: Colors.grey[600],
+                 ),
+               ),
+               Text(
+                 'Rp${finalTotalAmount.toStringAsFixed(0)}',
+                 style: GoogleFonts.poppins(
+                   fontSize: 18,
+                   fontWeight: FontWeight.bold,
+                   color: primaryColor,
+                 ),
+               ),
+             ],
+           ),
+         ),
+         Container(
+           height: 50,
+           decoration: BoxDecoration(
+             gradient: LinearGradient(
+               colors: isCheckoutDisabled
+                   ? [Colors.grey[400]!, Colors.grey[300]!]
+                   : [primaryColor, primaryColor.withOpacity(0.8)],
+               begin: Alignment.topLeft,
+               end: Alignment.bottomRight,
+             ),
+             borderRadius: BorderRadius.circular(25),
+             boxShadow: isCheckoutDisabled
+                 ? []
+                 : [
+                     BoxShadow(
+                       color: primaryColor.withOpacity(0.3),
+                       blurRadius: 8,
+                       offset: const Offset(0, 4),
+                     ),
+                   ],
+           ),
+           child: ElevatedButton(
+             onPressed: isCheckoutDisabled || _isProcessingPayment
+                 ? null
+                 : () => _processPayment(
+                       finalTotalAmount,
+                       cartProvider,
+                       transactionService,
+                       authProvider,
+                       primaryColor,
+                     ),
+             style: ElevatedButton.styleFrom(
+               backgroundColor: Colors.transparent,
+               shadowColor: Colors.transparent,
+               disabledBackgroundColor: Colors.transparent,
+               minimumSize: const Size(160, 50),
+               shape: RoundedRectangleBorder(
+                 borderRadius: BorderRadius.circular(25),
+               ),
+             ),
+             child: Padding(
+               padding: const EdgeInsets.symmetric(horizontal: 16),
+               child: _isProcessingPayment
+                   ? const SizedBox(
+                       width: 20,
+                       height: 20,
+                       child: CircularProgressIndicator(
+                         strokeWidth: 2,
+                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                       ),
+                     )
+                   : Row(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         Text(
+                           'Pay Now',
+                           style: GoogleFonts.poppins(
+                             color: Colors.white,
+                             fontWeight: FontWeight.w600,
+                             fontSize: 15,
+                           ),
+                         ),
+                         const SizedBox(width: 8),
+                         const Icon(
+                           Icons.arrow_forward_rounded,
+                           color: Colors.white,
+                           size: 18,
+                         ),
+                       ],
+                     ),
+             ),
+           ),
+         ),
+       ],
+     ),
+   );
+ }
 
-  Future<void> _processPayment(
-    double finalTotalAmount,
-    CartProvider cartProvider,
-    TransactionService transactionService,
-    AuthProvider authProvider,
-    Color primaryColor,
-  ) async {
-    if (!authProvider.isLoggedIn || authProvider.firebaseUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Anda harus login untuk melanjutkan.")),
-      );
-      return;
-    }
+ Widget _buildProductImage(CartItem item) {
+   if (item.imageUrl.startsWith('http')) {
+     return Image.network(
+       item.imageUrl,
+       fit: BoxFit.cover,
+       loadingBuilder: (context, child, loadingProgress) {
+         if (loadingProgress == null) return child;
+         return Center(
+           child: CircularProgressIndicator(
+             value: loadingProgress.expectedTotalBytes != null
+                 ? loadingProgress.cumulativeBytesLoaded / 
+                   loadingProgress.expectedTotalBytes!
+                 : null,
+           ),
+         );
+       },
+       errorBuilder: (context, error, stackTrace) {
+         return Center(
+           child: Text(
+             item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
+             style: GoogleFonts.poppins(
+               fontSize: 20,
+               fontWeight: FontWeight.bold,
+               color: Colors.black54,
+             ),
+           ),
+         );
+       },
+     );
+   } else if (item.imageUrl.startsWith('assets/')) {
+     return Image.asset(
+       item.imageUrl,
+       fit: BoxFit.cover,
+       errorBuilder: (context, error, stackTrace) {
+         return Center(
+           child: Text(
+             item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
+             style: GoogleFonts.poppins(
+               fontSize: 20,
+               fontWeight: FontWeight.bold,
+               color: Colors.black54,
+             ),
+           ),
+         );
+       },
+     );
+   }
+   
+   return Center(
+     child: Text(
+       item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
+       style: GoogleFonts.poppins(
+         fontSize: 20,
+         fontWeight: FontWeight.bold,
+         color: Colors.black54,
+       ),
+     ),
+   );
+ }
 
-    setState(() => _isProcessingPayment = true);
+ void _showBankSelectionDialog(BuildContext context, Color primaryColor) {
+   final banks = [
+     {'name': 'Bank BCA', 'account': '1234567890', 'holder': 'PT TokoKu'},
+     {'name': 'Bank Mandiri', 'account': '0987654321', 'holder': 'PT TokoKu'},
+     {'name': 'Bank BNI', 'account': '1122334455', 'holder': 'PT TokoKu'},
+     {'name': 'Bank BRI', 'account': '5544332211', 'holder': 'PT TokoKu'},
+   ];
 
-    try {
-      String? transactionId = await transactionService.createTransaction(
-        items: cartProvider.items,
-        totalAmount: finalTotalAmount,
-        userId: authProvider.firebaseUser!.uid,
-        shippingAddress: _deliveryAddress,
-        paymentMethod: "$_selectedPaymentMethod${_selectedBank.isNotEmpty ? ' - $_selectedBank' : ''}",
-        status: _selectedPaymentMethod == 'COD' 
-            ? models.TransactionStatus.pending 
-            : models.TransactionStatus.pending,
-      );
+   showDialog(
+     context: context,
+     builder: (context) => Dialog(
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+       child: Padding(
+         padding: const EdgeInsets.all(16.0),
+         child: Column(
+           mainAxisSize: MainAxisSize.min,
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Text(
+               'Pilih Bank',
+               style: GoogleFonts.poppins(
+                 fontSize: 18,
+                 fontWeight: FontWeight.bold,
+                 color: Colors.black87,
+               ),
+             ),
+             const SizedBox(height: 16),
+             SizedBox(
+               height: 250,
+               child: ListView.separated(
+                 shrinkWrap: true,
+                 itemCount: banks.length,
+                 separatorBuilder: (context, index) => Divider(
+                   height: 1,
+                   color: Colors.grey[200],
+                 ),
+                 itemBuilder: (context, index) {
+                   final bank = banks[index];
+                   return InkWell(
+                     onTap: () {
+                       setState(() => _selectedBank = bank['name']!);
+                       Navigator.pop(context);
+                     },
+                     child: Padding(
+                       padding: const EdgeInsets.symmetric(vertical: 12.0),
+                       child: Row(
+                         children: [
+                           Container(
+                             padding: const EdgeInsets.all(10),
+                             decoration: BoxDecoration(
+                               color: primaryColor.withOpacity(0.1),
+                               borderRadius: BorderRadius.circular(12),
+                             ),
+                             child: Icon(
+                               Icons.account_balance,
+                               color: primaryColor,
+                               size: 24,
+                             ),
+                           ),
+                           const SizedBox(width: 12),
+                           Expanded(
+                             child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 Text(
+                                   bank['name']!,
+                                   style: GoogleFonts.poppins(
+                                     fontWeight: FontWeight.w600,
+                                     fontSize: 14,
+                                   ),
+                                 ),
+                                 const SizedBox(height: 2),
+                                 Text(
+                                   '${bank['account']} (${bank['holder']})',
+                                   style: GoogleFonts.poppins(
+                                     fontSize: 12,
+                                     color: Colors.grey[600],
+                                   ),
+                                 ),
+                               ],
+                             ),
+                           ),
+                           if (_selectedBank == bank['name'])
+                             Icon(
+                               Icons.check_circle,
+                               color: primaryColor,
+                               size: 20,
+                             ),
+                         ],
+                       ),
+                     ),
+                   );
+                 },
+               ),
+             ),
+             const SizedBox(height: 16),
+             SizedBox(
+               width: double.infinity,
+               child: TextButton(
+                 onPressed: () => Navigator.pop(context),
+                 child: Text(
+                   'Tutup',
+                   style: GoogleFonts.poppins(
+                     color: primaryColor,
+                     fontWeight: FontWeight.w600,
+                   ),
+                 ),
+               ),
+             ),
+           ],
+         ),
+       ),
+     ),
+   );
+ }
 
-      if (transactionId != null) {
-        await cartProvider.clearCart();
-        if (mounted) {
-          _showSuccessDialog(context, primaryColor, transactionId);
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Gagal membuat pesanan. Coba lagi.")),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error processing payment: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${e.toString()}")),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessingPayment = false);
-      }
-    }
-  }
+ void _showEditContactDialog(BuildContext context, Color secondaryColor, AuthProvider authProvider) {
+   _phoneController.text = _contactPhone;
+   _emailController.text = _contactEmail;
 
-  Widget _buildProductImage(CartItem item) {
-    if (item.imageUrl.startsWith('http')) {
-      return Image.network(
-        item.imageUrl,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / 
-                    loadingProgress.expectedTotalBytes!
-                  : null,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return Center(
-            child: Text(
-              item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
-            ),
-          );
-        },
-      );
-    } else if (item.imageUrl.startsWith('assets/')) {
-      return Image.asset(
-        item.imageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Center(
-            child: Text(
-              item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
-            ),
-          );
-        },
-      );
-    }
-    
-    return Center(
-      child: Text(
-        item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
-        style: GoogleFonts.poppins(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black54,
-        ),
-      ),
-    );
-  }
+   showDialog(
+     context: context,
+     builder: (context) => AlertDialog(
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+       title: Text(
+         'Edit Contact Information',
+         style: GoogleFonts.poppins(
+           fontWeight: FontWeight.bold,
+           fontSize: 18,
+           color: Colors.black87,
+         ),
+       ),
+       content: Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           TextField(
+             controller: _phoneController,
+             decoration: InputDecoration(
+               labelText: 'Phone Number',
+               hintText: 'Enter your phone number',
+               border: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: Colors.grey[300]!),
+               ),
+               focusedBorder: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: secondaryColor, width: 2),
+               ),
+               contentPadding: const EdgeInsets.all(16),
+             ),
+             style: GoogleFonts.poppins(
+               fontSize: 14,
+               color: Colors.black87,
+             ),
+           ),
+           const SizedBox(height: 16),
+           TextField(
+             controller: _emailController,
+             decoration: InputDecoration(
+               labelText: 'Email',
+               hintText: 'Enter your email address',
+               border: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: Colors.grey[300]!),
+               ),
+               focusedBorder: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: secondaryColor, width: 2),
+               ),
+               contentPadding: const EdgeInsets.all(16),
+             ),
+             style: GoogleFonts.poppins(
+               fontSize: 14,
+               color: Colors.black87,
+             ),
+           ),
+         ],
+       ),
+       actions: [
+         TextButton(
+           onPressed: () => Navigator.pop(context),
+           child: Text(
+             'Cancel',
+             style: GoogleFonts.poppins(
+               color: Colors.grey[600],
+               fontWeight: FontWeight.w500,
+             ),
+           ),
+         ),
+         TextButton(
+           onPressed: () {
+             setState(() {
+               _contactPhone = _phoneController.text;
+               _contactEmail = _emailController.text;
+             });
+             Navigator.pop(context);
+           },
+           child: Text(
+             'Save',
+             style: GoogleFonts.poppins(
+               color: secondaryColor,
+               fontWeight: FontWeight.w600,
+             ),
+           ),
+         ),
+       ],
+     ),
+   );
+ }
 
-  void _showBankSelectionDialog(BuildContext context, Color primaryColor) {
-    final banks = [
-      {'name': 'Bank BCA', 'account': '1234567890', 'holder': 'PT TokoKu'},
-      {'name': 'Bank Mandiri', 'account': '0987654321', 'holder': 'PT TokoKu'},
-      {'name': 'Bank BNI', 'account': '1122334455', 'holder': 'PT TokoKu'},
-      {'name': 'Bank BRI', 'account': '5544332211', 'holder': 'PT TokoKu'},
-    ];
+ void _showEditAddressDialog(BuildContext context, Color primaryColor, AuthProvider authProvider) {
+   _addressController.text = _deliveryAddress;
+   
+   showDialog(
+     context: context,
+     builder: (context) => AlertDialog(
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+       title: Text(
+         _deliveryAddress.isEmpty ? 'Add Delivery Address' : 'Edit Delivery Address',
+         style: GoogleFonts.poppins(
+           fontWeight: FontWeight.bold,
+           fontSize: 18,
+           color: Colors.black87,
+         ),
+       ),
+       content: Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           TextField(
+             controller: _addressController,
+             maxLines: 3,
+             decoration: InputDecoration(
+               hintText: 'Enter your delivery address',
+               border: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: Colors.grey[300]!),
+               ),
+               focusedBorder: OutlineInputBorder(
+                 borderRadius: BorderRadius.circular(12),
+                 borderSide: BorderSide(color: primaryColor, width: 2),
+               ),
+               contentPadding: const EdgeInsets.all(16),
+             ),
+             style: GoogleFonts.poppins(
+               fontSize: 14,
+               color: Colors.black87,
+             ),
+           ),
+           const SizedBox(height: 12),
+           Row(
+             children: [
+               Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+               const SizedBox(width: 8),
+               Expanded(
+                 child: Text(
+                   'Alamat ini akan disimpan ke profil Anda',
+                   style: GoogleFonts.poppins(
+                     fontSize: 12,
+                     color: Colors.grey[600],
+                   ),
+                 ),
+               ),
+             ],
+           ),
+         ],
+       ),
+       actions: [
+         TextButton(
+           onPressed: () => Navigator.pop(context),
+           child: Text(
+             'Cancel',
+             style: GoogleFonts.poppins(
+               color: Colors.grey[600],
+               fontWeight: FontWeight.w500,
+             ),
+           ),
+         ),
+         TextButton(
+           onPressed: () async {
+             final newAddress = _addressController.text.trim();
+             setState(() {
+               _deliveryAddress = newAddress;
+             });
+             Navigator.pop(context);
+             await _updateUserAddressInDatabase(authProvider, newAddress);
+           },
+           child: Text(
+             'Save',
+             style: GoogleFonts.poppins(
+               color: primaryColor,
+               fontWeight: FontWeight.w600,
+             ),
+           ),
+         ),
+       ],
+     ),
+   );
+ }
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Pilih Bank',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 250,
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: banks.length,
-                  separatorBuilder: (context, index) => Divider(
-                    height: 1,
-                    color: Colors.grey[200],
-                  ),
-                  itemBuilder: (context, index) {
-                    final bank = banks[index];
-                    return InkWell(
-                      onTap: () {
-                        setState(() => _selectedBank = bank['name']!);
-                        Navigator.pop(context);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.account_balance,
-                                color: primaryColor,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    bank['name']!,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${bank['account']} (${bank['holder']})',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (_selectedBank == bank['name'])
-                              Icon(
-                                Icons.check_circle,
-                                color: primaryColor,
-                                size: 20,
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Tutup',
-                    style: GoogleFonts.poppins(
-                      color: primaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showEditContactDialog(BuildContext context, Color secondaryColor, AuthProvider authProvider) {
-    _phoneController.text = _contactPhone;
-    _emailController.text = _contactEmail;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Edit Contact Information',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.black87,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _phoneController,
-              decoration: InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter your phone number',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: secondaryColor, width: 2),
-                ),
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                hintText: 'Enter your email address',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: secondaryColor, width: 2),
-                ),
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _contactPhone = _phoneController.text;
-                _contactEmail = _emailController.text;
-              });
-              Navigator.pop(context);
-              
-              // OPTIONAL: Update user profile in database if needed
-              // _updateUserContactInDatabase(authProvider);
-            },
-            child: Text(
-              'Save',
-              style: GoogleFonts.poppins(
-                color: secondaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEditAddressDialog(BuildContext context, Color primaryColor, AuthProvider authProvider) {
-    _addressController.text = _deliveryAddress;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          _deliveryAddress.isEmpty ? 'Add Delivery Address' : 'Edit Delivery Address',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.black87,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _addressController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Enter your delivery address',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: primaryColor, width: 2),
-                ),
-                contentPadding: const EdgeInsets.all(16),
-              ),
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Alamat ini akan disimpan ke profil Anda',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              final newAddress = _addressController.text.trim();
-              setState(() {
-                _deliveryAddress = newAddress;
-              });
-              Navigator.pop(context);
-              
-              // Update address in user profile database
-              await _updateUserAddressInDatabase(authProvider, newAddress);
-            },
-            child: Text(
-              'Save',
-              style: GoogleFonts.poppins(
-                color: primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAMBAHAN: Method untuk update alamat ke database user
-  Future<void> _updateUserAddressInDatabase(AuthProvider authProvider, String newAddress) async {
-    if (!authProvider.isLoggedIn || authProvider.userModel == null) {
-      print('❌ User tidak login atau userModel null');
-      return;
-    }
-    
-    try {
-      print('🏠 Updating alamat to database: "$newAddress"');
-      
-      // Buat UserModel baru dengan alamat yang diupdate menggunakan copyWith yang sudah ada
-      final updatedUser = authProvider.userModel!.copyWith(
-        alamat: newAddress.trim().isEmpty ? null : newAddress.trim(),
-      );
-      
-      print('🏠 Updated UserModel alamat: "${updatedUser.alamat}"');
-      
-      // Update ke database melalui AuthProvider
-      bool success = await authProvider.updateUserProfile(updatedUser);
-      
-      if (success && mounted) {
-        print('✅ Alamat berhasil disimpan ke database');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Alamat berhasil disimpan ke profil',
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else if (mounted) {
-        print('⚠️ Gagal menyimpan alamat ke database');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.warning, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Alamat tersimpan sementara, gagal sync ke profil',
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      print('❌ Error updating user address: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Error menyimpan alamat: ${e.toString()}',
-                    style: GoogleFonts.poppins(fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  void _showSuccessDialog(BuildContext context, Color primaryColor, String transactionId) {
-    String paymentMethod = _selectedPaymentMethod;
-    String additionalInfo = '';
-    
-    if (_selectedPaymentMethod == 'Transfer Bank' && _selectedBank.isNotEmpty) {
-      additionalInfo = 'via $_selectedBank';
-    } else if (_selectedPaymentMethod == 'COD') {
-      additionalInfo = 'Bayar saat barang tiba';
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 50,
-                  color: primaryColor,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Pesanan Berhasil!',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'ID Pesanan: #${transactionId.length > 8 ? transactionId.substring(0, 8) : transactionId}...',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Metode Pembayaran: $paymentMethod\n$additionalInfo',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 20,
-                      color: Colors.grey[700],
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _selectedPaymentMethod == 'Transfer Bank'
-                            ? 'Mohon segera lakukan pembayaran dalam 24 jam.'
-                            : 'Siapkan uang pas saat barang datang.',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-                child: Text(
-                  'Kembali ke Beranda',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const TransactionScreen(
-                        showBackButton: true,
-                      ),
-                    ),
-                  );
-                },
-                child: Text(
-                  'Lihat Pesanan Saya',
-                  style: GoogleFonts.poppins(
-                    color: primaryColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+ Future<void> _updateUserAddressInDatabase(AuthProvider authProvider, String newAddress) async {
+   if (!authProvider.isLoggedIn || authProvider.userModel == null) {
+     print('❌ User tidak login atau userModel null');
+     return;
+   }
+   
+   try {
+     print('🏠 Updating alamat to database: "$newAddress"');
+     
+     final updatedUser = authProvider.userModel!.copyWith(
+       alamat: newAddress.trim().isEmpty ? null : newAddress.trim(),
+     );
+     
+     print('🏠 Updated UserModel alamat: "${updatedUser.alamat}"');
+     
+     bool success = await authProvider.updateUserProfile(updatedUser);
+     
+     if (success && mounted) {
+       print('✅ Alamat berhasil disimpan ke database');
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Row(
+             children: [
+               Icon(Icons.check_circle, color: Colors.white, size: 20),
+               const SizedBox(width: 8),
+               Text(
+                 'Alamat berhasil disimpan ke profil',
+                 style: GoogleFonts.poppins(),
+               ),
+             ],
+           ),
+           backgroundColor: Colors.green,
+           duration: const Duration(seconds: 2),
+           behavior: SnackBarBehavior.floating,
+         ),
+       );
+     } else if (mounted) {
+       print('⚠️ Gagal menyimpan alamat ke database');
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Row(
+             children: [
+               Icon(Icons.warning, color: Colors.white, size: 20),
+               const SizedBox(width: 8),
+               Text(
+                 'Alamat tersimpan sementara, gagal sync ke profil',
+                 style: GoogleFonts.poppins(),
+               ),
+             ],
+           ),
+           backgroundColor: Colors.orange,
+           duration: const Duration(seconds: 2),
+           behavior: SnackBarBehavior.floating,
+         ),
+       );
+     }
+   } catch (e) {
+     print('❌ Error updating user address: $e');
+     if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Row(
+             children: [
+               Icon(Icons.error, color: Colors.white, size: 20),
+               const SizedBox(width: 8),
+               Expanded(
+                 child: Text(
+                   'Error menyimpan alamat: ${e.toString()}',
+                   style: GoogleFonts.poppins(fontSize: 13),
+                 ),
+               ),
+             ],
+           ),
+           backgroundColor: Colors.red,
+           duration: const Duration(seconds: 3),
+           behavior: SnackBarBehavior.floating,
+         ),
+       );
+     }
+   }
+ }
 }
