@@ -1,10 +1,8 @@
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
+    // Google Services plugin sudah ada di classpath, jadi tinggal apply
     id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -23,20 +21,19 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.toko_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // PERBAIKAN: Update minSdk untuk Google Sign-In
+        minSdk = 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // PERBAIKAN: Tambahkan multiDexEnabled
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -44,4 +41,19 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // PERBAIKAN: Gunakan versi yang kompatibel dengan Google Services 4.3.15
+    implementation("androidx.multidex:multidex:2.0.1")
+    
+    // Versi yang kompatibel dengan plugin Google Services 4.3.15
+    implementation("com.google.android.gms:play-services-auth:20.5.0")
+    implementation("com.google.firebase:firebase-auth:21.3.0")
+    implementation("com.google.firebase:firebase-core:21.1.1")
+    implementation("com.google.firebase:firebase-firestore:24.6.1")
+    
+    // Base dependencies untuk mencegah konflik
+    implementation("com.google.android.gms:play-services-base:18.1.0")
+    implementation("com.google.android.gms:play-services-basement:18.1.0")
 }

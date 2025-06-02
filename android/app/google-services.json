@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "891279363167-n0v8a5j1sgagbkg8ag12kfh2qc9tvjj3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.toko_app",
+            "certificate_hash": "43616dc621deaee2b9b1569b704d6b94df28a46a"
+          }
+        },
+        {
           "client_id": "891279363167-m1ff5vnhqcd0nth3md2dvaisrsivvfre.apps.googleusercontent.com",
           "client_type": 3
         }

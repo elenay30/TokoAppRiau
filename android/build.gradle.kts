@@ -1,3 +1,8 @@
+plugins {
+    // PERBAIKAN: Gunakan versi yang sudah ada di classpath (4.3.15)
+    id("com.google.gms.google-services") version "4.3.15" apply false
+}
+
 allprojects {
     repositories {
         google()
