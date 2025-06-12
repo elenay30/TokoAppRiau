@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/cart_item.dart';
+// TAMBAHAN: Import untuk OpenStreetMap
+import '../widgets/openstreetmap_address_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -173,62 +176,150 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  // UPDATED: Method dialog dengan OpenStreetMap integration
   void _showEditAddressDialog(BuildContext context, Color primaryColor, AuthProvider authProvider) {
     _addressController.text = deliveryAddress;
     showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(deliveryAddress.isEmpty ? 'Add Delivery Address' : 'Edit Delivery Address', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _addressController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                        hintText: 'Enter your delivery address',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 2)),
-                        contentPadding: const EdgeInsets.all(16)),
-                    style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Alamat ini akan disimpan ke profil Anda',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          deliveryAddress.isEmpty ? 'Add Delivery Address' : 'Edit Delivery Address', 
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _addressController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Enter your delivery address',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12), 
+                  borderSide: BorderSide(color: Colors.grey[300]!)
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12), 
+                  borderSide: BorderSide(color: primaryColor, width: 2)
+                ),
+                contentPadding: const EdgeInsets.all(16)
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w500))),
-                TextButton(
-                    onPressed: () async {
-                      final newAddress = _addressController.text.trim();
-                      if (mounted) {
-                        setState(() {
-                          deliveryAddress = newAddress;
-                        });
-                      }
-                      Navigator.pop(context);
-                      
-                      // Update address in user profile database
-                      await _updateUserAddressInDatabase(authProvider, newAddress);
-                    },
-                    child: Text('Save', style: GoogleFonts.poppins(color: primaryColor, fontWeight: FontWeight.w600))),
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            
+            // TAMBAHAN: OpenStreetMap Button
+            Container(
+              width: double.infinity,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: primaryColor.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog first
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OpenStreetMapAddressPicker(
+                        initialAddress: deliveryAddress,
+                        primaryColor: primaryColor,
+                        onAddressSelected: (String address, LatLng? coordinates) async {
+                          if (mounted) {
+                            setState(() {
+                              deliveryAddress = address;
+                              _addressController.text = address;
+                            });
+                            
+                            print('🗺️ Alamat dipilih dari OpenStreetMap: "$address"');
+                            if (coordinates != null) {
+                              print('📍 Koordinat: ${coordinates.latitude}, ${coordinates.longitude}');
+                            }
+                            
+                            // Update address in user profile database
+                            await _updateUserAddressInDatabase(authProvider, address);
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  Icons.map_outlined,
+                  color: primaryColor,
+                  size: 18,
+                ),
+                label: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Pilih dari Maps',
+                      style: GoogleFonts.poppins(
+                        color: primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  
+                  ],
+                ),
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Alamat ini akan disimpan ke profil Anda',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
               ],
-            ));
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w500))
+          ),
+          TextButton(
+            onPressed: () async {
+              final newAddress = _addressController.text.trim();
+              if (mounted) {
+                setState(() {
+                  deliveryAddress = newAddress;
+                });
+              }
+              Navigator.pop(context);
+              
+              // Update address in user profile database
+              await _updateUserAddressInDatabase(authProvider, newAddress);
+            },
+            child: Text('Save', style: GoogleFonts.poppins(color: primaryColor, fontWeight: FontWeight.w600))
+          ),
+        ],
+      )
+    );
   }
 
   // TAMBAHAN: Method untuk update alamat ke database user

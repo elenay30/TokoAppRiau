@@ -429,21 +429,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // FIXED: _buildProductItem dengan Consumer dan quantity control
+  // FIXED: _buildProductItem - HAPUS NAVIGASI, ADD TO CART LANGSUNG
   Widget _buildProductItem(Product product, Color accentColor) {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         final isInCart = cartProvider.isInCart(product.id);
         final cartQuantity = cartProvider.getProductQuantity(product.id);
 
-        return GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(
-              context, 
-              '/product-detail',
-              arguments: product,
-            );
-          },
+        return Container(
+          // HAPUS GestureDetector - TIDAK ADA AKSI SAAT KLIK PRODUK
           child: Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
@@ -1155,21 +1149,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // FIXED: _buildModernProductItem dengan Consumer dan quantity control
+  // FIXED: _buildModernProductItem - HAPUS NAVIGASI, ADD TO CART LANGSUNG
   Widget _buildModernProductItem(Product product, Color accentColor) {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         final isInCart = cartProvider.isInCart(product.id);
         final cartQuantity = cartProvider.getProductQuantity(product.id);
 
-        return GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(
-              context, 
-              '/product-detail',
-              arguments: product,
-            );
-          },
+        return Container(
+          // HAPUS GestureDetector - TIDAK ADA AKSI SAAT KLIK PRODUK
           child: Container(
             width: 150,
             padding: const EdgeInsets.all(10.0),
@@ -1337,7 +1325,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // NEW: Quantity Control Widget - SAMA SEPERTI RAMADHAN/DRINKS SCREEN
+  // Quantity Control Widget
   Widget _buildQuantityControl(Product product, CartProvider cartProvider, int quantity) {
     return Container(
       height: 28,
@@ -1420,7 +1408,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // NEW: Method _addToCartNew - SAMA SEPERTI RAMADHAN/DRINKS SCREEN
+  // Method _addToCartNew
   void _addToCartNew(Product product) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -1451,7 +1439,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // NEW: Login Dialog - SAMA SEPERTI RAMADHAN/DRINKS SCREEN
+  // Login Dialog
   void _showLoginDialog() {
     showDialog(
       context: context,

@@ -44,26 +44,46 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // PERBAIKAN: Firebase initialization dengan error handling yang lebih baik
+    print('🔥 Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('🔥 Firebase initialized successfully');
+    print('✅ Firebase initialized successfully');
     
-    // Initialize product data
+    // PERBAIKAN: Initialize product data dengan error handling individual
     print('📦 Initializing product data...');
     try {
-      await Future.wait([
-        FoodDataScript.initializeFoodProducts(),
-        KitchenIngredientsDataScript.initializeKitchenIngredientsProducts(),
-        RamadhanDataScript.initializeRamadhanProducts(),
-      ]);
-      print('✅ All product data initialized successfully');
+      // Initialize each data script individually to catch specific errors
+      try {
+        await FoodDataScript.initializeFoodProducts();
+        print('✅ Food products initialized');
+      } catch (e) {
+        print('⚠️ Error initializing food products: $e');
+      }
+      
+      try {
+        await KitchenIngredientsDataScript.initializeKitchenIngredientsProducts();
+        print('✅ Kitchen ingredients initialized');
+      } catch (e) {
+        print('⚠️ Error initializing kitchen ingredients: $e');
+      }
+      
+      try {
+        await RamadhanDataScript.initializeRamadhanProducts();
+        print('✅ Ramadhan products initialized');
+      } catch (e) {
+        print('⚠️ Error initializing ramadhan products: $e');
+      }
+      
+      print('✅ Product data initialization completed');
     } catch (e) {
-      print('⚠️ Error initializing product data: $e');
+      print('⚠️ General error initializing product data: $e');
     }
     
   } catch (e) {
     print('❌ Firebase initialization error: $e');
+    // App bisa tetap berjalan meskipun Firebase gagal, untuk debugging
   }
 
   runApp(const MyApp());
@@ -76,14 +96,42 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // AuthProvider harus pertama karena provider lain bergantung padanya
-        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        // PERBAIKAN: AuthProvider dengan error handling
+        ChangeNotifierProvider<AuthProvider>(
+          create: (context) {
+            try {
+              return AuthProvider();
+            } catch (e) {
+              print('❌ AuthProvider creation error: $e');
+              // Return basic AuthProvider yang tidak akan crash
+              return AuthProvider();
+            }
+          },
+        ),
         
         // CartProvider bergantung pada auth state
-        ChangeNotifierProvider(create: (context) => CartProvider()),
+        ChangeNotifierProvider<CartProvider>(
+          create: (context) {
+            try {
+              return CartProvider();
+            } catch (e) {
+              print('❌ CartProvider creation error: $e');
+              return CartProvider();
+            }
+          },
+        ),
         
         // TransactionService untuk checkout
-        ChangeNotifierProvider(create: (context) => TransactionService()),
+        ChangeNotifierProvider<TransactionService>(
+          create: (context) {
+            try {
+              return TransactionService();
+            } catch (e) {
+              print('❌ TransactionService creation error: $e');
+              return TransactionService();
+            }
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'TokoKu',
@@ -93,9 +141,17 @@ class MyApp extends StatelessWidget {
           primaryColor: const Color(0xFF2D7BEE),
           scaffoldBackgroundColor: Colors.white,
           fontFamily: 'Poppins',
+          // PERBAIKAN: Tambahkan useMaterial3 untuk compatibility
+          useMaterial3: true,
+          // PERBAIKAN: Improve color scheme
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF2D7BEE),
+            brightness: Brightness.light,
+          ),
           appBarTheme: AppBarTheme(
             backgroundColor: const Color(0xFF2D7BEE),
             elevation: 0,
+            centerTitle: true,
             titleTextStyle: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -118,76 +174,128 @@ class MyApp extends StatelessWidget {
           ),
         ),
         home: const SplashScreen(),
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/main': (context) => const MainScreen(), // PASTIKAN ROUTE INI ADA
-          '/home': (context) => const HomeScreen(),
-          
-          // Category screens
-          '/food_category': (context) => const FoodCategoryScreen(),
-          '/drinks_category': (context) => const DrinksCategoryScreen(),
-          '/kitchen_ingredients_category': (context) => const KitchenIngredientsCategoryScreen(),
-          '/fruit_category': (context) => const FruitCategoryScreen(),
-          '/personalcare_category': (context) => const PersonalcareCategoryScreen(),
-          '/all_categories': (context) => const AllCategoriesScreen(),
-          '/ramadhan_products': (context) => const RamadhanProductsScreen(),
-          
-          // News and info screens
-          '/news': (context) => const NewsScreen(),
-          '/detail_promo': (context) => const DetailPromoScreen(),
-          
-          // Transaction screens
-          '/cart': (context) => const CartScreen(),
-          '/checkout': (context) => const CheckoutScreen(),
-          '/transaction': (context) => const TransactionScreen(),
-          
-          // Setting screens
-          '/setting': (context) => const SettingScreen(),
-          '/edit_profile': (context) => const ProfileUpdateScreen(),
-          '/creator_profile': (context) => const CreatorProfileScreen(),
-          '/about': (context) => const AboutScreen(),
+        // PERBAIKAN: Route handling dengan error handling
+        onGenerateRoute: (settings) {
+          try {
+            switch (settings.name) {
+              case '/':
+                return MaterialPageRoute(builder: (context) => const SplashScreen());
+              case '/login':
+                return MaterialPageRoute(builder: (context) => const LoginScreen());
+              case '/register':
+                return MaterialPageRoute(builder: (context) => const RegisterScreen());
+              case '/main':
+                return MaterialPageRoute(builder: (context) => const MainScreen());
+              case '/home':
+                return MaterialPageRoute(builder: (context) => const HomeScreen());
+              case '/food_category':
+                return MaterialPageRoute(builder: (context) => const FoodCategoryScreen());
+              case '/drinks_category':
+                return MaterialPageRoute(builder: (context) => const DrinksCategoryScreen());
+              case '/kitchen_ingredients_category':
+                return MaterialPageRoute(builder: (context) => const KitchenIngredientsCategoryScreen());
+              case '/fruit_category':
+                return MaterialPageRoute(builder: (context) => const FruitCategoryScreen());
+              case '/personalcare_category':
+                return MaterialPageRoute(builder: (context) => const PersonalcareCategoryScreen());
+              case '/all_categories':
+                return MaterialPageRoute(builder: (context) => const AllCategoriesScreen());
+              case '/ramadhan_products':
+                return MaterialPageRoute(builder: (context) => const RamadhanProductsScreen());
+              case '/news':
+                return MaterialPageRoute(builder: (context) => const NewsScreen());
+              case '/detail_promo':
+                return MaterialPageRoute(builder: (context) => const DetailPromoScreen());
+              case '/cart':
+                return MaterialPageRoute(builder: (context) => const CartScreen());
+              case '/checkout':
+                return MaterialPageRoute(builder: (context) => const CheckoutScreen());
+              case '/transaction':
+                return MaterialPageRoute(builder: (context) => const TransactionScreen());
+              case '/setting':
+                return MaterialPageRoute(builder: (context) => const SettingScreen());
+              case '/edit_profile':
+                return MaterialPageRoute(builder: (context) => const ProfileUpdateScreen());
+              case '/creator_profile':
+                return MaterialPageRoute(builder: (context) => const CreatorProfileScreen());
+              case '/about':
+                return MaterialPageRoute(builder: (context) => const AboutScreen());
+              default:
+                return _buildErrorRoute(settings.name ?? 'Unknown');
+            }
+          } catch (e) {
+            print('❌ Route generation error for ${settings.name}: $e');
+            return _buildErrorRoute(settings.name ?? 'Unknown', error: e.toString());
+          }
         },
         onUnknownRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (context) => Scaffold(
-              appBar: AppBar(
-                title: const Text('Page Not Found'),
-                backgroundColor: const Color(0xFF2D7BEE),
-              ),
-              body: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Halaman tidak ditemukan',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Silakan kembali ke halaman sebelumnya.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
+          return _buildErrorRoute(settings.name ?? 'Unknown');
         },
+      ),
+    );
+  }
+
+  // PERBAIKAN: Helper method untuk error route
+  MaterialPageRoute _buildErrorRoute(String routeName, {String? error}) {
+    return MaterialPageRoute(
+      builder: (context) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Page Not Found'),
+          backgroundColor: const Color(0xFF2D7BEE),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Halaman tidak ditemukan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Route: $routeName',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Error: $error',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: Colors.red[400],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  },
+                  child: Text(
+                    'Kembali ke Home',
+                    style: GoogleFonts.poppins(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

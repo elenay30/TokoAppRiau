@@ -6,7 +6,10 @@ import '../models/user_model.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // Biarkan auto-detect dari google-services.json yang sudah di-update dengan SHA-1 yang benar
+  );
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? _firebaseUser;
@@ -307,6 +310,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
       print('📱 Starting Google Sign In...');
+      print('📱 Expected SHA-1: 43:61:6D:C6:21:DE:AE:E2:B9:B1:56:9B:70:4D:6B:94:DF:28:A4:6A');
 
       // Sign out first to ensure clean state
       await _googleSignIn.signOut();
@@ -760,7 +764,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Update user profile
+  // Update user profile - METHOD INI YANG HILANG DAN MENYEBABKAN ERROR
   Future<bool> updateUserProfile(UserModel updatedUser) async {
     try {
       _setLoading(true);

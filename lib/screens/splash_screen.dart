@@ -19,6 +19,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _waveController;
   late AnimationController _particleController;
   late AnimationController _glowController;
+  late AnimationController _shimmerController;
 
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
@@ -33,6 +34,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _waveAnimation;
   late Animation<double> _particleFloat;
   late Animation<double> _glowIntensity;
+  late Animation<double> _shimmerAnimation;
 
   @override
   void initState() {
@@ -45,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _initializeAnimations() {
     // Logo animations with multiple effects
     _logoController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 2500),
       vsync: this,
     );
 
@@ -59,39 +61,39 @@ class _SplashScreenState extends State<SplashScreen>
     _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _logoController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOutCubic),
       ),
     );
 
-    _logoRotation = Tween<double>(begin: -math.pi, end: 0.0).animate(
+    _logoRotation = Tween<double>(begin: -math.pi * 0.5, end: 0.0).animate(
       CurvedAnimation(
         parent: _logoController,
-        curve: const Interval(0.2, 0.8, curve: Curves.elasticOut),
+        curve: const Interval(0.3, 0.9, curve: Curves.elasticOut),
       ),
     );
 
     _logoBounce = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _logoController,
-        curve: const Interval(0.6, 1.0, curve: Curves.bounceOut),
+        curve: const Interval(0.7, 1.0, curve: Curves.bounceOut),
       ),
     );
 
-    // Text animations with multiple effects
+    // Text animations with smoother effects
     _textController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
     _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _textController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeInOut),
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutQuart),
       ),
     );
 
     _textSlide = Tween<Offset>(
-      begin: const Offset(0, 1.0),
+      begin: const Offset(0, 0.8),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -100,33 +102,46 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _textScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _textScale = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _textController,
-        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
+        curve: const Interval(0.4, 1.0, curve: Curves.elasticOut),
       ),
     );
 
-    // Loading animation with smooth rotation
+    // Shimmer effect for text
+    _shimmerController = AnimationController(
+      duration: const Duration(milliseconds: 3000),
+      vsync: this,
+    );
+
+    _shimmerAnimation = Tween<double>(begin: -2.0, end: 2.0).animate(
+      CurvedAnimation(
+        parent: _shimmerController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    // Loading animation with smoother rotation
     _loadingController = AnimationController(
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
     _loadingRotation = Tween<double>(begin: 0, end: 2 * math.pi).animate(
       CurvedAnimation(
         parent: _loadingController,
-        curve: Curves.easeInOutQuart,
+        curve: Curves.easeInOutCubic,
       ),
     );
 
-    // Background floating with sine wave
+    // Background floating with smoother motion
     _backgroundController = AnimationController(
-      duration: const Duration(milliseconds: 8000),
+      duration: const Duration(milliseconds: 6000),
       vsync: this,
     );
 
-    _backgroundFloat = Tween<double>(begin: -25, end: 25).animate(
+    _backgroundFloat = Tween<double>(begin: -20, end: 20).animate(
       CurvedAnimation(
         parent: _backgroundController,
         curve: Curves.easeInOutSine,
@@ -135,11 +150,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Pulse animation for breathing effect
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.15).animate(
+    _pulseAnimation = Tween<double>(begin: 0.98, end: 1.08).animate(
       CurvedAnimation(
         parent: _pulseController,
         curve: Curves.easeInOutSine,
@@ -148,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Wave animation for dynamic background
     _waveController = AnimationController(
-      duration: const Duration(milliseconds: 5000),
+      duration: const Duration(milliseconds: 4000),
       vsync: this,
     );
 
@@ -161,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Particle floating animation
     _particleController = AnimationController(
-      duration: const Duration(milliseconds: 7000),
+      duration: const Duration(milliseconds: 8000),
       vsync: this,
     );
 
@@ -174,11 +189,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Glow intensity animation
     _glowController = AnimationController(
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 2500),
       vsync: this,
     );
 
-    _glowIntensity = Tween<double>(begin: 0.3, end: 1.0).animate(
+    _glowIntensity = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(
         parent: _glowController,
         curve: Curves.easeInOutSine,
@@ -187,17 +202,22 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startAnimationSequence() {
-    // Start logo animation immediately with staggered effects
+    // Start logo animation immediately
     _logoController.forward();
 
     // Start text animation with delay
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      _textController.forward();
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _textController.forward();
+        _shimmerController.repeat();
+      }
     });
 
     // Start loading animation
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      _loadingController.repeat();
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        _loadingController.repeat();
+      }
     });
 
     // Start continuous animations
@@ -206,9 +226,11 @@ class _SplashScreenState extends State<SplashScreen>
     _particleController.repeat();
     
     // Start pulse and glow after logo appears
-    Future.delayed(const Duration(milliseconds: 2000), () {
-      _pulseController.repeat(reverse: true);
-      _glowController.repeat(reverse: true);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (mounted) {
+        _pulseController.repeat(reverse: true);
+        _glowController.repeat(reverse: true);
+      }
     });
   }
 
@@ -222,6 +244,7 @@ class _SplashScreenState extends State<SplashScreen>
         _particleController.stop();
         _pulseController.stop();
         _glowController.stop();
+        _shimmerController.stop();
         
         // Wait a brief moment for animations to settle
         await Future.delayed(const Duration(milliseconds: 100));
@@ -245,6 +268,7 @@ class _SplashScreenState extends State<SplashScreen>
     _waveController.dispose();
     _particleController.dispose();
     _glowController.dispose();
+    _shimmerController.dispose();
     super.dispose();
   }
 
@@ -254,7 +278,7 @@ class _SplashScreenState extends State<SplashScreen>
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF), // Set explicit background color
+      backgroundColor: const Color(0xFFF5F7FA),
       body: AnimatedBuilder(
         animation: Listenable.merge([_backgroundFloat, _waveAnimation, _glowIntensity]),
         builder: (context, child) {
@@ -264,60 +288,56 @@ class _SplashScreenState extends State<SplashScreen>
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: Alignment(
-                  math.sin(_waveAnimation.value) * 0.3,
-                  math.cos(_waveAnimation.value) * 0.2,
+                  math.sin(_waveAnimation.value) * 0.2,
+                  math.cos(_waveAnimation.value) * 0.15,
                 ),
-                radius: 1.8 + math.sin(_waveAnimation.value * 0.5) * 0.3,
+                radius: 1.5 + math.sin(_waveAnimation.value * 0.3) * 0.2,
                 colors: [
-                  Color.lerp(const Color(0xFFF8FAFF), const Color(0xFFE8F4FD), 
-                    (_glowIntensity.value * 0.5))!,
-                  Color.lerp(const Color(0xFFE8F4FD), const Color(0xFFDCF0FF), 
-                    _glowIntensity.value * 0.3)!,
-                  Color.lerp(const Color(0xFFDCF0FF), const Color(0xFFF0F8FF), 
-                    _glowIntensity.value * 0.4)!,
-                  Color.lerp(const Color(0xFFF0F8FF), const Color(0xFFE0EFFF), 
-                    _glowIntensity.value * 0.2)!,
+                  const Color(0xFFF8FAFF),
+                  const Color(0xFFF0F4FF),
+                  const Color(0xFFE8F2FF),
+                  const Color(0xFFF5F7FA),
                 ],
-                stops: const [0.0, 0.3, 0.7, 1.0],
+                stops: const [0.0, 0.4, 0.8, 1.0],
               ),
             ),
             child: Stack(
               children: [
-                // Dynamic animated background
-                _buildDynamicBackground(screenWidth, screenHeight),
+                // Enhanced dynamic background
+                _buildEnhancedBackground(screenWidth, screenHeight),
                 
-                // Floating particles system
-                _buildParticleSystem(screenWidth, screenHeight),
+                // Improved particle system
+                _buildImprovedParticleSystem(screenWidth, screenHeight),
                 
-                // Main content with parallax effect
+                // Main content with subtle parallax
                 Transform.translate(
                   offset: Offset(
-                    math.sin(_backgroundFloat.value * 0.1) * 2,
-                    math.cos(_backgroundFloat.value * 0.08) * 3,
+                    math.sin(_backgroundFloat.value * 0.05) * 1,
+                    math.cos(_backgroundFloat.value * 0.03) * 2,
                   ),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Super animated logo
-                        _buildSuperAnimatedLogo(screenWidth),
+                        // Enhanced logo
+                        _buildEnhancedLogo(screenWidth),
                         
-                        SizedBox(height: screenHeight * 0.06),
+                        SizedBox(height: screenHeight * 0.05),
                         
-                        // Ultra modern loading indicator
-                        _buildUltraModernLoader(),
+                        // Improved loading indicator
+                        _buildImprovedLoader(),
                         
-                        SizedBox(height: screenHeight * 0.08),
+                        SizedBox(height: screenHeight * 0.07),
                         
-                        // Dynamic animated tagline
-                        _buildDynamicTagline(),
+                        // Enhanced tagline
+                        _buildEnhancedTagline(),
                       ],
                     ),
                   ),
                 ),
                 
-                // Animated bottom info
-                _buildAnimatedBottomInfo(),
+                // Enhanced bottom info
+                _buildEnhancedBottomInfo(),
               ],
             ),
           );
@@ -326,37 +346,38 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildDynamicBackground(double screenWidth, double screenHeight) {
+  Widget _buildEnhancedBackground(double screenWidth, double screenHeight) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_backgroundFloat, _waveAnimation, _particleFloat]),
+      animation: Listenable.merge([_backgroundFloat, _waveAnimation, _glowIntensity]),
       builder: (context, child) {
         return Stack(
           children: [
-            // Large morphing orbs with wave motion
-            ...List.generate(3, (index) {
-              final baseColors = [
+            // Gentle floating orbs
+            ...List.generate(4, (index) {
+              final colors = [
                 const Color(0xFF2D7BEE),
                 const Color(0xFFFF8C00),
                 const Color(0xFF00BCD4),
+                const Color(0xFF4CAF50),
               ];
               
               return Positioned(
-                top: screenHeight * (0.1 + index * 0.3) + 
-                    math.sin(_waveAnimation.value + index * 2) * 30,
-                left: screenWidth * (0.1 + index * 0.3) + 
-                    math.cos(_waveAnimation.value + index * 1.5) * 40,
+                top: screenHeight * (0.1 + index * 0.25) + 
+                    math.sin(_waveAnimation.value + index * 1.5) * 25,
+                left: screenWidth * (0.05 + index * 0.3) + 
+                    math.cos(_waveAnimation.value + index * 1.2) * 30,
                 child: Transform.scale(
-                  scale: 1.0 + math.sin(_waveAnimation.value + index) * 0.2,
+                  scale: 0.8 + math.sin(_waveAnimation.value + index * 0.7) * 0.15,
                   child: Container(
-                    width: screenWidth * (0.4 + index * 0.1),
-                    height: screenWidth * (0.4 + index * 0.1),
+                    width: screenWidth * (0.25 + index * 0.05),
+                    height: screenWidth * (0.25 + index * 0.05),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          baseColors[index].withOpacity(0.25 * _glowIntensity.value),
-                          baseColors[index].withOpacity(0.15 * _glowIntensity.value),
-                          baseColors[index].withOpacity(0.05 * _glowIntensity.value),
+                          colors[index].withOpacity(0.15 * _glowIntensity.value),
+                          colors[index].withOpacity(0.08 * _glowIntensity.value),
+                          colors[index].withOpacity(0.03 * _glowIntensity.value),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.4, 0.7, 1.0],
@@ -367,22 +388,22 @@ class _SplashScreenState extends State<SplashScreen>
               );
             }),
             
-            // Flowing ribbon effects
-            ...List.generate(2, (index) {
+            // Subtle wave patterns
+            ...List.generate(3, (index) {
               return Positioned(
-                top: screenHeight * (0.3 + index * 0.4),
-                left: -50,
+                top: screenHeight * (0.2 + index * 0.3),
+                left: -100,
                 child: Transform.rotate(
-                  angle: math.sin(_waveAnimation.value + index * math.pi) * 0.2,
+                  angle: math.sin(_waveAnimation.value + index * 0.7) * 0.1,
                   child: Container(
-                    width: screenWidth + 100,
-                    height: 60,
+                    width: screenWidth + 200,
+                    height: 40,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF2D7BEE).withOpacity(0.08 * _glowIntensity.value),
-                          const Color(0xFFFF8C00).withOpacity(0.06 * _glowIntensity.value),
+                          const Color(0xFF2D7BEE).withOpacity(0.04 * _glowIntensity.value),
+                          const Color(0xFFFF8C00).withOpacity(0.03 * _glowIntensity.value),
                           Colors.transparent,
                         ],
                       ),
@@ -397,41 +418,41 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildParticleSystem(double screenWidth, double screenHeight) {
+  Widget _buildImprovedParticleSystem(double screenWidth, double screenHeight) {
     return AnimatedBuilder(
       animation: Listenable.merge([_particleFloat, _glowIntensity]),
       builder: (context, child) {
         return Stack(
-          children: List.generate(15, (index) {
+          children: List.generate(12, (index) {
             final colors = [
               const Color(0xFF2D7BEE),
               const Color(0xFFFF8C00),
               const Color(0xFF00BCD4),
-              const Color(0xFF9C27B0),
               const Color(0xFF4CAF50),
+              const Color(0xFF9C27B0),
             ];
             
-            final baseSize = 3.0 + (index % 4) * 2;
-            final animatedSize = baseSize * (1 + math.sin(_particleFloat.value + index) * 0.5);
+            final baseSize = 2.5 + (index % 3) * 1.5;
+            final animatedSize = baseSize * (0.8 + math.sin(_particleFloat.value + index) * 0.3);
             
             return Positioned(
-              left: screenWidth * (0.1 + (index * 0.07) % 0.8) + 
-                  math.sin(_particleFloat.value + index * 0.8) * 50,
-              top: screenHeight * (0.1 + (index * 0.06) % 0.8) + 
-                  math.cos(_particleFloat.value + index * 0.6) * 40,
+              left: screenWidth * (0.1 + (index * 0.08) % 0.8) + 
+                  math.sin(_particleFloat.value + index * 0.6) * 40,
+              top: screenHeight * (0.1 + (index * 0.07) % 0.8) + 
+                  math.cos(_particleFloat.value + index * 0.4) * 30,
               child: Transform.scale(
-                scale: 0.5 + math.sin(_particleFloat.value + index * 2) * 0.5,
+                scale: 0.6 + math.sin(_particleFloat.value + index * 1.8) * 0.4,
                 child: Container(
                   width: animatedSize,
                   height: animatedSize,
                   decoration: BoxDecoration(
-                    color: colors[index % colors.length].withOpacity(0.8 * _glowIntensity.value),
+                    color: colors[index % colors.length].withOpacity(0.6 * _glowIntensity.value),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: colors[index % colors.length].withOpacity(0.6 * _glowIntensity.value),
-                        blurRadius: 15 + math.sin(_particleFloat.value + index) * 10,
-                        spreadRadius: 2,
+                        color: colors[index % colors.length].withOpacity(0.3 * _glowIntensity.value),
+                        blurRadius: 8 + math.sin(_particleFloat.value + index) * 4,
+                        spreadRadius: 1,
                       ),
                     ],
                   ),
@@ -444,7 +465,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildSuperAnimatedLogo(double screenWidth) {
+  Widget _buildEnhancedLogo(double screenWidth) {
     return AnimatedBuilder(
       animation: Listenable.merge([
         _logoScale, _logoOpacity, _logoRotation, _logoBounce, 
@@ -456,51 +477,45 @@ class _SplashScreenState extends State<SplashScreen>
           child: Transform.scale(
             scale: _pulseAnimation.value * _logoBounce.value,
             child: Transform.rotate(
-              angle: _logoRotation.value + math.sin(_waveAnimation.value * 0.5) * 0.05,
+              angle: _logoRotation.value + math.sin(_waveAnimation.value * 0.3) * 0.02,
               child: ScaleTransition(
                 scale: _logoScale,
                 child: Container(
-                  padding: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
                         Colors.white,
                         Colors.white.withOpacity(0.98),
-                        Colors.white.withOpacity(0.95),
+                        Colors.white.withOpacity(0.94),
                       ],
                       stops: const [0.0, 0.7, 1.0],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2D7BEE).withOpacity(0.4 * _glowIntensity.value),
-                        blurRadius: 60 + math.sin(_waveAnimation.value) * 20,
-                        spreadRadius: 8,
-                        offset: Offset(
-                          math.sin(_waveAnimation.value * 0.7) * 5,
-                          15 + math.cos(_waveAnimation.value * 0.5) * 5,
-                        ),
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFFFF8C00).withOpacity(0.3 * _glowIntensity.value),
-                        blurRadius: 40 + math.cos(_waveAnimation.value * 1.2) * 15,
+                        color: const Color(0xFF2D7BEE).withOpacity(0.3 * _glowIntensity.value),
+                        blurRadius: 40 + math.sin(_waveAnimation.value) * 15,
                         spreadRadius: 5,
                         offset: Offset(
-                          -8 + math.cos(_waveAnimation.value) * 3,
-                          8 + math.sin(_waveAnimation.value * 0.8) * 3,
+                          math.sin(_waveAnimation.value * 0.5) * 3,
+                          12 + math.cos(_waveAnimation.value * 0.3) * 4,
                         ),
                       ),
                       BoxShadow(
-                        color: const Color(0xFF00BCD4).withOpacity(0.2 * _glowIntensity.value),
-                        blurRadius: 35,
+                        color: const Color(0xFFFF8C00).withOpacity(0.2 * _glowIntensity.value),
+                        blurRadius: 30 + math.cos(_waveAnimation.value * 0.8) * 10,
                         spreadRadius: 3,
-                        offset: const Offset(0, 10),
+                        offset: Offset(
+                          -5 + math.cos(_waveAnimation.value * 0.7) * 2,
+                          6 + math.sin(_waveAnimation.value * 0.6) * 2,
+                        ),
                       ),
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 30,
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 25,
                         spreadRadius: 0,
-                        offset: const Offset(0, 12),
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -509,26 +524,26 @@ class _SplashScreenState extends State<SplashScreen>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          const Color(0xFF2D7BEE).withOpacity(0.08 * _glowIntensity.value),
-                          const Color(0xFFFF8C00).withOpacity(0.04 * _glowIntensity.value),
+                          const Color(0xFF2D7BEE).withOpacity(0.05 * _glowIntensity.value),
+                          const Color(0xFFFF8C00).withOpacity(0.02 * _glowIntensity.value),
                           Colors.transparent,
                         ],
                       ),
                     ),
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(8),
                     child: Image.asset(
                       'assets/images/LogoTokoKu.png',
-                      width: screenWidth * 0.28,
-                      height: screenWidth * 0.28,
+                      width: screenWidth * 0.24,
+                      height: screenWidth * 0.24,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          width: screenWidth * 0.28,
-                          height: screenWidth * 0.28,
+                          width: screenWidth * 0.24,
+                          height: screenWidth * 0.24,
                           decoration: BoxDecoration(
                             gradient: RadialGradient(
                               colors: [
-                                const Color(0xFF2D7BEE).withOpacity(0.2 * _glowIntensity.value),
-                                const Color(0xFF2D7BEE).withOpacity(0.1 * _glowIntensity.value),
+                                const Color(0xFF2D7BEE).withOpacity(0.15 * _glowIntensity.value),
+                                const Color(0xFF2D7BEE).withOpacity(0.08 * _glowIntensity.value),
                                 Colors.transparent,
                               ],
                             ),
@@ -536,7 +551,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           child: Icon(
                             Icons.store_rounded,
-                            size: 70,
+                            size: 60,
                             color: Color.lerp(
                               const Color(0xFF2D7BEE),
                               const Color(0xFFFF8C00),
@@ -556,46 +571,41 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildUltraModernLoader() {
+  Widget _buildImprovedLoader() {
     return AnimatedBuilder(
       animation: Listenable.merge([_loadingRotation, _glowIntensity, _waveAnimation]),
       builder: (context, child) {
         return Container(
-          width: 80,
-          height: 80,
+          width: 70,
+          height: 70,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Outer glow ring with pulsing effect
+              // Outer glow
               Container(
-                width: 85,
-                height: 85,
+                width: 75,
+                height: 75,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2D7BEE).withOpacity(0.3 * _glowIntensity.value),
-                      blurRadius: 30 + math.sin(_waveAnimation.value * 2) * 10,
-                      spreadRadius: 5,
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFFFF8C00).withOpacity(0.2 * _glowIntensity.value),
-                      blurRadius: 25,
+                      color: const Color(0xFF2D7BEE).withOpacity(0.2 * _glowIntensity.value),
+                      blurRadius: 20 + math.sin(_waveAnimation.value * 1.5) * 8,
                       spreadRadius: 3,
                     ),
                   ],
                 ),
               ),
               
-              // Multiple rotating rings
-              ...List.generate(3, (index) {
+              // Rotating rings
+              ...List.generate(2, (index) {
                 return Transform.rotate(
-                  angle: _loadingRotation.value * (1 + index * 0.3) * (index % 2 == 0 ? 1 : -1),
+                  angle: _loadingRotation.value * (1 + index * 0.4) * (index % 2 == 0 ? 1 : -1),
                   child: Container(
-                    width: 75 - index * 10.0,
-                    height: 75 - index * 10.0,
+                    width: 65 - index * 8.0,
+                    height: 65 - index * 8.0,
                     child: CustomPaint(
-                      painter: MultiRingLoaderPainter(
+                      painter: EnhancedRingLoaderPainter(
                         _loadingRotation.value,
                         index,
                         _glowIntensity.value,
@@ -605,25 +615,32 @@ class _SplashScreenState extends State<SplashScreen>
                 );
               }),
               
-              // Center pulsing dot
+              // Center pulsing circle for loading
               Transform.scale(
-                scale: 1.0 + math.sin(_waveAnimation.value * 3) * 0.3,
+                scale: 1.0 + math.sin(_waveAnimation.value * 2.5) * 0.15,
                 child: Container(
-                  width: 12,
-                  height: 12,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       colors: [
                         const Color(0xFFFF8C00),
                         const Color(0xFF2D7BEE),
+                        const Color(0xFF00BCD4),
                       ],
+                      stops: const [0.0, 0.6, 1.0],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF8C00).withOpacity(0.8 * _glowIntensity.value),
-                        blurRadius: 15,
-                        spreadRadius: 2,
+                        color: const Color(0xFF2D7BEE).withOpacity(0.6 * _glowIntensity.value),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFF8C00).withOpacity(0.4 * _glowIntensity.value),
+                        blurRadius: 16,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
@@ -636,10 +653,11 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildDynamicTagline() {
+  Widget _buildEnhancedTagline() {
     return AnimatedBuilder(
       animation: Listenable.merge([
-        _textFade, _textSlide, _textScale, _glowIntensity, _waveAnimation
+        _textFade, _textSlide, _textScale, _glowIntensity, 
+        _waveAnimation, _shimmerAnimation
       ]),
       builder: (context, child) {
         return SlideTransition(
@@ -647,103 +665,118 @@ class _SplashScreenState extends State<SplashScreen>
           child: FadeTransition(
             opacity: _textFade,
             child: Transform.scale(
-              scale: _textScale.value * (1 + math.sin(_waveAnimation.value * 0.3) * 0.02),
+              scale: _textScale.value * (1 + math.sin(_waveAnimation.value * 0.2) * 0.01),
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+                margin: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withOpacity(0.98),
                       Colors.white.withOpacity(0.95),
                       Colors.white.withOpacity(0.92),
+                      Colors.white.withOpacity(0.88),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(35),
+                  borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2D7BEE).withOpacity(0.2 * _glowIntensity.value),
-                      blurRadius: 50 + math.sin(_waveAnimation.value) * 15,
+                      color: const Color(0xFF2D7BEE).withOpacity(0.15 * _glowIntensity.value),
+                      blurRadius: 35 + math.sin(_waveAnimation.value) * 10,
                       spreadRadius: 0,
                       offset: Offset(
-                        math.sin(_waveAnimation.value * 0.5) * 3,
-                        15 + math.cos(_waveAnimation.value * 0.3) * 5,
+                        math.sin(_waveAnimation.value * 0.4) * 2,
+                        10 + math.cos(_waveAnimation.value * 0.2) * 3,
                       ),
                     ),
                     BoxShadow(
-                      color: const Color(0xFFFF8C00).withOpacity(0.15 * _glowIntensity.value),
-                      blurRadius: 35,
-                      spreadRadius: 0,
-                      offset: const Offset(-5, 8),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: const Color(0xFFFF8C00).withOpacity(0.1 * _glowIntensity.value),
                       blurRadius: 25,
                       spreadRadius: 0,
-                      offset: const Offset(0, 8),
+                      offset: const Offset(-3, 5),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                   border: Border.all(
-                    width: 2,
+                    width: 1.5,
                     color: Color.lerp(
-                      const Color(0xFF2D7BEE).withOpacity(0.2),
-                      const Color(0xFFFF8C00).withOpacity(0.2),
-                      math.sin(_waveAnimation.value * 0.5) * 0.5 + 0.5,
+                      const Color(0xFF2D7BEE).withOpacity(0.15),
+                      const Color(0xFFFF8C00).withOpacity(0.15),
+                      math.sin(_waveAnimation.value * 0.4) * 0.5 + 0.5,
                     )!,
                   ),
                 ),
                 child: Column(
                   children: [
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'SHOP MORE ',
-                            style: GoogleFonts.poppins(
-                              color: Color.lerp(
-                                const Color(0xFF2D7BEE),
-                                const Color(0xFF0066CC),
-                                math.sin(_waveAnimation.value * 0.7) * 0.5 + 0.5,
-                              ),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                              letterSpacing: 2.0,
-                              shadows: [
-                                Shadow(
-                                  color: const Color(0xFF2D7BEE).withOpacity(0.4 * _glowIntensity.value),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
+                    ShaderMask(
+                      shaderCallback: (bounds) {
+                        return LinearGradient(
+                          begin: Alignment(-1.0 + _shimmerAnimation.value, 0.0),
+                          end: Alignment(1.0 + _shimmerAnimation.value, 0.0),
+                          colors: const [
+                            Colors.transparent,
+                            Colors.white,
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.srcATop,
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'SHOP MORE ',
+                              style: GoogleFonts.poppins(
+                                color: Color.lerp(
+                                  const Color(0xFF2D7BEE),
+                                  const Color(0xFF0066CC),
+                                  math.sin(_waveAnimation.value * 0.5) * 0.5 + 0.5,
                                 ),
-                              ],
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'ECONOMICALLY',
-                            style: GoogleFonts.poppins(
-                              color: Color.lerp(
-                                const Color(0xFFFF8C00),
-                                const Color(0xFFFF6600),
-                                math.cos(_waveAnimation.value * 0.8) * 0.5 + 0.5,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                letterSpacing: 1.5,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(0xFF2D7BEE).withOpacity(0.3 * _glowIntensity.value),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                              letterSpacing: 2.0,
-                              shadows: [
-                                Shadow(
-                                  color: const Color(0xFFFF8C00).withOpacity(0.4 * _glowIntensity.value),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
                             ),
-                          ),
-                        ],
+                            TextSpan(
+                              text: 'ECONOMICALLY',
+                              style: GoogleFonts.poppins(
+                                color: Color.lerp(
+                                  const Color(0xFFFF8C00),
+                                  const Color(0xFFFF6600),
+                                  math.cos(_waveAnimation.value * 0.6) * 0.5 + 0.5,
+                                ),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                letterSpacing: 1.5,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(0xFFFF8C00).withOpacity(0.3 * _glowIntensity.value),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       'COMFORTABLY & HAPPILY',
                       textAlign: TextAlign.center,
@@ -751,45 +784,43 @@ class _SplashScreenState extends State<SplashScreen>
                         color: Color.lerp(
                           const Color(0xFF2D7BEE),
                           const Color(0xFF0066CC),
-                          math.sin(_waveAnimation.value * 0.4) * 0.3 + 0.5,
+                          math.sin(_waveAnimation.value * 0.3) * 0.3 + 0.5,
                         ),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        letterSpacing: 1.2,
                         shadows: [
                           Shadow(
-                            color: const Color(0xFF2D7BEE).withOpacity(0.3 * _glowIntensity.value),
-                            blurRadius: 10,
+                            color: const Color(0xFF2D7BEE).withOpacity(0.2 * _glowIntensity.value),
+                            blurRadius: 6,
                             offset: const Offset(0, 1),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Container(
-                      width: 60,
-                      height: 5,
+                      width: 50,
+                      height: 4,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(3),
                         gradient: LinearGradient(
                           colors: [
                             const Color(0xFF2D7BEE),
-                            const Color(0xFF00BCD4),
                             const Color(0xFFFF8C00),
-                            const Color(0xFF9C27B0),
+                            const Color(0xFF00BCD4),
                           ],
                           stops: [
                             0.0,
-                            math.sin(_waveAnimation.value * 0.5) * 0.3 + 0.3,
-                            math.cos(_waveAnimation.value * 0.7) * 0.3 + 0.7,
+                            math.sin(_waveAnimation.value * 0.4) * 0.3 + 0.5,
                             1.0,
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2D7BEE).withOpacity(0.5 * _glowIntensity.value),
-                            blurRadius: 15,
-                            spreadRadius: 2,
+                            color: const Color(0xFF2D7BEE).withOpacity(0.4 * _glowIntensity.value),
+                            blurRadius: 10,
+                            spreadRadius: 1,
                           ),
                         ],
                       ),
@@ -804,7 +835,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildAnimatedBottomInfo() {
+  Widget _buildEnhancedBottomInfo() {
     return AnimatedBuilder(
       animation: Listenable.merge([_glowIntensity, _waveAnimation]),
       builder: (context, child) {
@@ -814,8 +845,8 @@ class _SplashScreenState extends State<SplashScreen>
           right: 0,
           child: Transform.translate(
             offset: Offset(
-              math.sin(_waveAnimation.value * 0.3) * 2,
-              math.cos(_waveAnimation.value * 0.2) * 3,
+              math.sin(_waveAnimation.value * 0.2) * 1,
+              math.cos(_waveAnimation.value * 0.15) * 2,
             ),
             child: Column(
               children: [
@@ -825,28 +856,28 @@ class _SplashScreenState extends State<SplashScreen>
                     color: Color.lerp(
                       const Color(0xFF2D7BEE),
                       const Color(0xFFFF8C00),
-                      math.sin(_waveAnimation.value * 0.6) * 0.5 + 0.5,
+                      math.sin(_waveAnimation.value * 0.4) * 0.5 + 0.5,
                     ),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
                     shadows: [
                       Shadow(
-                        color: const Color(0xFF2D7BEE).withOpacity(0.4 * _glowIntensity.value),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
+                        color: const Color(0xFF2D7BEE).withOpacity(0.3 * _glowIntensity.value),
+                        blurRadius: 8,
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   'Version 1.0.0',
                   style: GoogleFonts.poppins(
-                    color: Colors.grey[600]?.withOpacity(0.8 + _glowIntensity.value * 0.2),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+                    color: Colors.grey[600]?.withOpacity(0.7 + _glowIntensity.value * 0.2),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ],
@@ -858,33 +889,32 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class MultiRingLoaderPainter extends CustomPainter {
+class EnhancedRingLoaderPainter extends CustomPainter {
   final double rotation;
   final int ringIndex;
   final double glowIntensity;
 
-  MultiRingLoaderPainter(this.rotation, this.ringIndex, this.glowIntensity);
+  EnhancedRingLoaderPainter(this.rotation, this.ringIndex, this.glowIntensity);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..strokeWidth = 4 - ringIndex * 0.5
+      ..strokeWidth = 3.5 - ringIndex * 0.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final colors = [
-      [const Color(0xFF2D7BEE), const Color(0xFF00BCD4), const Color(0xFFFF8C00)],
-      [const Color(0xFFFF8C00), const Color(0xFF9C27B0), const Color(0xFF2D7BEE)],
-      [const Color(0xFF00BCD4), const Color(0xFF2D7BEE), const Color(0xFFFF8C00)],
+      [const Color(0xFF2D7BEE), const Color(0xFFFF8C00), const Color(0xFF00BCD4)],
+      [const Color(0xFFFF8C00), const Color(0xFF4CAF50), const Color(0xFF2D7BEE)],
     ];
 
     final gradient = SweepGradient(
       colors: [
-        ...colors[ringIndex % colors.length].map((c) => c.withOpacity(0.9 * glowIntensity)),
-        colors[ringIndex % colors.length][0].withOpacity(0.3 * glowIntensity),
+        ...colors[ringIndex % colors.length].map((c) => c.withOpacity(0.8 * glowIntensity)),
+        colors[ringIndex % colors.length][0].withOpacity(0.2 * glowIntensity),
         Colors.transparent,
       ],
-      stops: const [0.0, 0.3, 0.6, 0.8, 1.0],
+      stops: const [0.0, 0.4, 0.7, 1.0],
     );
 
     paint.shader = gradient.createShader(
@@ -894,25 +924,25 @@ class MultiRingLoaderPainter extends CustomPainter {
       ),
     );
 
-    // Main arc with varying length
-    final arcLength = math.pi * (1.5 + math.sin(rotation * 2 + ringIndex) * 0.3);
+    // Main arc with smooth length variation
+    final arcLength = math.pi * (1.3 + math.sin(rotation * 1.5 + ringIndex) * 0.2);
     canvas.drawArc(
       Rect.fromCircle(
         center: Offset(size.width / 2, size.height / 2), 
-        radius: size.width / 2 - 2
+        radius: size.width / 2 - 1.5
       ),
-      -math.pi / 2 + rotation * (1 + ringIndex * 0.2),
+      -math.pi / 2 + rotation * (1 + ringIndex * 0.15),
       arcLength,
       false,
       paint,
     );
 
-    // Secondary smaller arc for depth
+    // Additional accent arc
     if (ringIndex == 0) {
-      paint.strokeWidth = 2;
+      paint.strokeWidth = 1.5;
       paint.shader = LinearGradient(
         colors: [
-          const Color(0xFFFF8C00).withOpacity(0.8 * glowIntensity),
+          const Color(0xFFFF8C00).withOpacity(0.6 * glowIntensity),
           Colors.transparent,
         ],
       ).createShader(
@@ -925,10 +955,10 @@ class MultiRingLoaderPainter extends CustomPainter {
       canvas.drawArc(
         Rect.fromCircle(
           center: Offset(size.width / 2, size.height / 2), 
-          radius: size.width / 2 - 12
+          radius: size.width / 2 - 8
         ),
-        -math.pi / 2 + rotation * 1.8,
-        math.pi * 0.6,
+        -math.pi / 2 + rotation * 1.6,
+        math.pi * 0.5,
         false,
         paint,
       );

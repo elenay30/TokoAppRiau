@@ -25,14 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (args != null && args['email'] != null) {
         _emailController.text = args['email'];
         if (args['message'] != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(args['message']),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          _showSuccessSnackBar(args['message']);
         }
       }
     });
@@ -67,6 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ENHANCED: Handle login dengan PigeonUserDetails error recovery
   Future<void> _handleLogin() async {
+    if (!mounted) return;
+    
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.clearError();
 
@@ -101,7 +96,11 @@ class _LoginScreenState extends State<LoginScreen> {
           
           print('✅ Login successful - navigating to main screen');
           await authProvider.debugUserData();
-          Navigator.pushReplacementNamed(context, '/main');
+          
+          // PERBAIKAN: Pastikan navigation aman
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/main');
+          }
         } else {
           print('❌ Login validation failed after authentication');
           _showErrorSnackBar('Login gagal - data pengguna tidak lengkap');
@@ -174,7 +173,9 @@ class _LoginScreenState extends State<LoginScreen> {
               authProvider.firebaseUser != null && 
               authProvider.userModel != null) {
             print('✅ Login recovered from top-level PigeonUserDetails error');
-            Navigator.pushReplacementNamed(context, '/main');
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/main');
+            }
             return;
           } else {
             _showErrorSnackBar('Terjadi kesalahan saat login. Coba lagi.');
@@ -194,6 +195,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ENHANCED: Handle Google Sign In dengan recovery yang lebih baik
   Future<void> _handleGoogleSignIn() async {
+    if (!mounted) return;
+    
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.clearError();
 
@@ -203,6 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       print('📱 Starting Google Sign In from UI...');
+      
+      // PERBAIKAN: Tambahkan feedback visual
+      _showInfoSnackBar('Memulai Google Sign-In...');
+      
       bool success = await authProvider.signInWithGoogle();
 
       if (!mounted) return;
@@ -213,7 +220,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && authProvider.isLoggedIn) {
         print('✅ Google Sign In successful - navigating immediately');
         await authProvider.debugUserData();
-        Navigator.pushReplacementNamed(context, '/main');
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/main');
+        }
       } else {
         String errorMsg = authProvider.errorMessage;
         print('📱 Error message: "$errorMsg"');
@@ -281,7 +291,9 @@ class _LoginScreenState extends State<LoginScreen> {
               authProvider.userModel != null) {
             print('✅ Google login recovered from top-level PigeonUserDetails error');
             await authProvider.debugUserData();
-            Navigator.pushReplacementNamed(context, '/main');
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/main');
+            }
             return;
           } else {
             _showErrorSnackBar('Terjadi kesalahan saat login dengan Google. Coba lagi.');
@@ -382,6 +394,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // PERBAIKAN: Tambahkan info snackbar
+  void _showInfoSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -477,6 +503,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             'assets/images/LogoTokoKu.png',
                             width: screenWidth * 0.4,
                             height: screenWidth * 0.4,
+                            // PERBAIKAN: Tambahkan error handling untuk asset
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: screenWidth * 0.4,
+                                height: screenWidth * 0.4,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: primaryColor.withOpacity(0.1),
+                                ),
+                                child: Icon(
+                                  Icons.store,
+                                  size: screenWidth * 0.2,
+                                  color: primaryColor,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),

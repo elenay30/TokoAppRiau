@@ -9,6 +9,9 @@ import '../models/transaction.dart' as models;
 import '../providers/auth_provider.dart';
 import '../screens/main_screen.dart';
 import 'package:intl/intl.dart';
+// TAMBAHAN: Import untuk OpenStreetMap
+import '../widgets/openstreetmap_address_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({Key? key}) : super(key: key);
@@ -1618,6 +1621,7 @@ void _showSuccessModal(
    );
  }
 
+ // UPDATED: Method dialog dengan OpenStreetMap integration
  void _showEditAddressDialog(BuildContext context, Color primaryColor, AuthProvider authProvider) {
    _addressController.text = _deliveryAddress;
    
@@ -1656,6 +1660,89 @@ void _showSuccessModal(
                color: Colors.black87,
              ),
            ),
+           const SizedBox(height: 16),
+           
+           // TAMBAHAN: OpenStreetMap Button
+           Container(
+             width: double.infinity,
+             height: 44,
+             decoration: BoxDecoration(
+               gradient: LinearGradient(
+                 colors: [primaryColor.withOpacity(0.1), primaryColor.withOpacity(0.05)],
+                 begin: Alignment.topLeft,
+                 end: Alignment.bottomRight,
+               ),
+               border: Border.all(color: primaryColor.withOpacity(0.3)),
+               borderRadius: BorderRadius.circular(12),
+             ),
+             child: TextButton.icon(
+               onPressed: () {
+                 Navigator.pop(context); // Close dialog first
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (context) => OpenStreetMapAddressPicker(
+                       initialAddress: _deliveryAddress,
+                       primaryColor: primaryColor,
+                       onAddressSelected: (String address, LatLng? coordinates) async {
+                         setState(() {
+                           _deliveryAddress = address;
+                           _addressController.text = address;
+                         });
+                         
+                         print('🗺️ Alamat dipilih dari OpenStreetMap: "$address"');
+                         if (coordinates != null) {
+                           print('📍 Koordinat: ${coordinates.latitude}, ${coordinates.longitude}');
+                         }
+                         
+                         await _updateUserAddressInDatabase(authProvider, address);
+                       },
+                     ),
+                   ),
+                 );
+               },
+               icon: Icon(
+                 Icons.map_outlined,
+                 color: primaryColor,
+                 size: 18,
+               ),
+               label: Row(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   Text(
+                     'Pilih dari Maps',
+                     style: GoogleFonts.poppins(
+                       color: primaryColor,
+                       fontWeight: FontWeight.w600,
+                       fontSize: 14,
+                     ),
+                   ),
+                   const SizedBox(width: 6),
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                     decoration: BoxDecoration(
+                       color: Colors.green,
+                       borderRadius: BorderRadius.circular(8),
+                     ),
+                     child: Text(
+                       'GRATIS',
+                       style: GoogleFonts.poppins(
+                         color: Colors.white,
+                         fontWeight: FontWeight.bold,
+                         fontSize: 10,
+                       ),
+                     ),
+                   ),
+                 ],
+               ),
+               style: TextButton.styleFrom(
+                 shape: RoundedRectangleBorder(
+                   borderRadius: BorderRadius.circular(12),
+                 ),
+               ),
+             ),
+           ),
+           
            const SizedBox(height: 12),
            Row(
              children: [
