@@ -253,27 +253,6 @@ class _RamadhanProductsScreenState extends State<RamadhanProductsScreen> {
                 
                 // Produk dari Firestore
                 if (firestoreProducts.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      Container(
-                        height: 18,
-                        width: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.green[700],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Produk dari Database',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 16),
                   GridView.builder(
                     shrinkWrap: true,
@@ -397,13 +376,6 @@ class _RamadhanProductsScreenState extends State<RamadhanProductsScreen> {
         final cartQuantity = cartProvider.getProductQuantity(product.id);
 
         return GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(
-              context, 
-              '/product-detail',
-              arguments: product,
-            );
-          },
           child: Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(

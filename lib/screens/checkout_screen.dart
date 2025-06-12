@@ -354,13 +354,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-// FINAL FIX: Perbaiki CheckoutScreen Success Modal - Stop Looping
-
-// 1. TAMBAHKAN import ini di atas file checkout_screen.dart
-
-// FIXED: Success Modal Navigation - Direct ke Orders Tab
-// Ganti method _showSuccessModal di CheckoutScreen
-
 void _showSuccessModal(
   BuildContext context, 
   Color primaryColor, 
@@ -1411,121 +1404,365 @@ void _showSuccessModal(
    );
  }
 
- void _showBankSelectionDialog(BuildContext context, Color primaryColor) {
-   final banks = [
-     {'name': 'Bank BCA', 'account': '1234567890', 'holder': 'PT TokoKu'},
-     {'name': 'Bank Mandiri', 'account': '0987654321', 'holder': 'PT TokoKu'},
-     {'name': 'Bank BNI', 'account': '1122334455', 'holder': 'PT TokoKu'},
-     {'name': 'Bank BRI', 'account': '5544332211', 'holder': 'PT TokoKu'},
-   ];
+  void _showBankSelectionDialog(BuildContext context, Color primaryColor) {
+    final banks = [
+      {
+        'name': 'Bank BCA',
+        'account': '1234567890',
+        'holder': 'PT TokoKu',
+        'logo': 'assets/images/logobca.png', // Path gambar BCA
+        'color': const Color(0xFF003893), // BCA Blue
+        'bgColor': const Color(0xFFE3F2FD),
+      },
+      {
+        'name': 'Bank Mandiri',
+        'account': '0987654321',
+        'holder': 'PT TokoKu',
+        'logo': 'assets/images/logomandiri.png', // Path gambar Mandiri
+        'color': const Color(0xFFFFB300), // Mandiri Orange/Gold
+        'bgColor': const Color(0xFFFFF8E1),
+      },
+      {
+        'name': 'Bank BNI',
+        'account': '1122334455',
+        'holder': 'PT TokoKu',
+        'logo': 'assets/images/logobni.png', // Path gambar BNI
+        'color': const Color(0xFFE65100), // BNI Orange
+        'bgColor': const Color(0xFFFBE9E7),
+      },
+      {
+        'name': 'Bank BRI',
+        'account': '5544332211',
+        'holder': 'PT TokoKu',
+        'logo': 'assets/images/logobri.png', // Path gambar BRI
+        'color': const Color(0xFF1976D2), // BRI Blue
+        'bgColor': const Color(0xFFE3F2FD),
+      },
+    ];
 
-   showDialog(
-     context: context,
-     builder: (context) => Dialog(
-       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-       child: Padding(
-         padding: const EdgeInsets.all(16.0),
-         child: Column(
-           mainAxisSize: MainAxisSize.min,
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             Text(
-               'Pilih Bank',
-               style: GoogleFonts.poppins(
-                 fontSize: 18,
-                 fontWeight: FontWeight.bold,
-                 color: Colors.black87,
-               ),
-             ),
-             const SizedBox(height: 16),
-             SizedBox(
-               height: 250,
-               child: ListView.separated(
-                 shrinkWrap: true,
-                 itemCount: banks.length,
-                 separatorBuilder: (context, index) => Divider(
-                   height: 1,
-                   color: Colors.grey[200],
-                 ),
-                 itemBuilder: (context, index) {
-                   final bank = banks[index];
-                   return InkWell(
-                     onTap: () {
-                       setState(() => _selectedBank = bank['name']!);
-                       Navigator.pop(context);
-                     },
-                     child: Padding(
-                       padding: const EdgeInsets.symmetric(vertical: 12.0),
-                       child: Row(
-                         children: [
-                           Container(
-                             padding: const EdgeInsets.all(10),
-                             decoration: BoxDecoration(
-                               color: primaryColor.withOpacity(0.1),
-                               borderRadius: BorderRadius.circular(12),
-                             ),
-                             child: Icon(
-                               Icons.account_balance,
-                               color: primaryColor,
-                               size: 24,
-                             ),
-                           ),
-                           const SizedBox(width: 12),
-                           Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text(
-                                   bank['name']!,
-                                   style: GoogleFonts.poppins(
-                                     fontWeight: FontWeight.w600,
-                                     fontSize: 14,
-                                   ),
-                                 ),
-                                 const SizedBox(height: 2),
-                                 Text(
-                                   '${bank['account']} (${bank['holder']})',
-                                   style: GoogleFonts.poppins(
-                                     fontSize: 12,
-                                     color: Colors.grey[600],
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           ),
-                           if (_selectedBank == bank['name'])
-                             Icon(
-                               Icons.check_circle,
-                               color: primaryColor,
-                               size: 20,
-                             ),
-                         ],
-                       ),
-                     ),
-                   );
-                 },
-               ),
-             ),
-             const SizedBox(height: 16),
-             SizedBox(
-               width: double.infinity,
-               child: TextButton(
-                 onPressed: () => Navigator.pop(context),
-                 child: Text(
-                   'Tutup',
-                   style: GoogleFonts.poppins(
-                     color: primaryColor,
-                     fontWeight: FontWeight.w600,
-                   ),
-                 ),
-               ),
-             ),
-           ],
-         ),
-       ),
-     ),
-   );
- }
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 16,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                primaryColor.withOpacity(0.02),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with icon
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_outlined,
+                        color: primaryColor,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pilih Bank',
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            'Transfer ke rekening berikut',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Bank Options
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: banks.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final bank = banks[index];
+                      final isSelected = _selectedBank == bank['name'];
+
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (bank['color'] as Color).withOpacity(0.08)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? (bank['color'] as Color).withOpacity(0.3)
+                                : Colors.grey[200]!,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                            BoxShadow(
+                              color: (bank['color'] as Color).withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                              : [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _selectedBank = bank['name']! as String);
+                            Navigator.pop(context);
+
+                            // Show success snackbar
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Image.asset(
+                                      bank['logo'] as String, // Path gambar
+                                      width: 20,
+                                      fit: BoxFit.contain,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${bank['name']} dipilih sebagai metode pembayaran',
+                                      style: GoogleFonts.poppins(fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: bank['color'] as Color,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                // Bank Logo Container
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: bank['bgColor'] as Color,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: (bank['color'] as Color).withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Image.asset(
+                                    bank['logo'] as String, // Path gambar
+                                    width: 28,
+                                    height: 28,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+
+                                // Bank Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            bank['name']! as String,
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          if (isSelected) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: bank['color'] as Color,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'DIPILIH',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'No. Rek: ${bank['account']}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'a.n ${bank['holder']}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Selection Indicator
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? (bank['color'] as Color)
+                                          : Colors.grey[400]!,
+                                      width: 2,
+                                    ),
+                                    color: isSelected
+                                        ? (bank['color'] as Color)
+                                        : Colors.transparent,
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 16,
+                                  )
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Info Text
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.blue.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue[700],
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Transfer ke rekening yang dipilih, lalu upload bukti pembayaran',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: Text(
+                      'Tutup',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
  void _showEditContactDialog(BuildContext context, Color secondaryColor, AuthProvider authProvider) {
    _phoneController.text = _contactPhone;

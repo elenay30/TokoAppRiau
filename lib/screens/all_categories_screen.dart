@@ -117,7 +117,7 @@ class AllCategoriesScreen extends StatelessWidget {
                           child: _buildCategoryItem(
                             'Foods',
                             'assets/images/foods.png',
-                            Colors.blue[100]!,
+                            Colors.orange[800]!,
                             primaryColor,
                           ),
                         ),
@@ -134,7 +134,7 @@ class AllCategoriesScreen extends StatelessWidget {
                           child: _buildCategoryItem(
                             'Drinks',
                             'assets/images/minum.png',
-                            Colors.blue[100]!,
+                            Colors.blue[800]!,
                             primaryColor,
                           ),
                         ),
@@ -151,8 +151,8 @@ class AllCategoriesScreen extends StatelessWidget {
                           child: _buildCategoryItem(
                             'Kitchen & Ingredients',
                             'assets/images/dapur.png',
-                            Colors.orange[100]!,
-                            Colors.orange[800]!,
+                            Colors.green[800]!,
+                            primaryColor
                           ),
                         ),
 
@@ -168,8 +168,8 @@ class AllCategoriesScreen extends StatelessWidget {
                           child: _buildCategoryItem(
                             'Fresh Fruits',
                             'assets/images/buah.png',
-                            Colors.amber[100]!,
-                            Colors.amber[800]!,
+                            Colors.blue[800]!,
+                            primaryColor
                           ),
                         ),
 
@@ -185,8 +185,8 @@ class AllCategoriesScreen extends StatelessWidget {
                           child: _buildCategoryItem(
                             'Personal Care',
                             'assets/images/personalcare.png',
-                            Colors.teal[100]!,
-                            Colors.teal[800]!,
+                            Colors.purple[800]!,
+                            primaryColor
                           ),
                         ),
                       ],
