@@ -1,0 +1,55 @@
+name: toko_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI & Fonts
+  google_fonts: ^4.0.4
+  transparent_image: ^2.0.1
+  cupertino_icons: ^1.0.8
+  
+  # Network & Storage
+  http: ^1.0.0
+  path_provider: ^2.1.0
+  path: ^1.8.3
+  shared_preferences: ^2.2.2
+  
+  # Firebase (Stable versions to avoid PigeonUserDetails bug)
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.2  # Downgraded for stability
+  cloud_firestore: ^4.13.6
+  
+  # Google Sign In (Stable version)
+  google_sign_in: ^6.1.5  # Downgraded for compatibility
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Utility packages
+  image_picker: ^1.0.4
+  intl: ^0.19.0
+  
+  # OpenStreetMap dependencies (GRATIS!) - Fixed versions
+  flutter_map: ^5.0.0
+  latlong2: ^0.9.1
+  geocoding: ^2.1.1
+  geolocator: ^10.1.0
+  permission_handler: ^11.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

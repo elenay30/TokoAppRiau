@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "891279363167",
+    "project_id": "toko-app-4c252",
+    "storage_bucket": "toko-app-4c252.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891279363167:android:3b48caa26e1249ea9fdfea",
+        "android_client_info": {
+          "package_name": "com.example.toko_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "891279363167-n0v8a5j1sgagbkg8ag12kfh2qc9tvjj3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.toko_app",
+            "certificate_hash": "43616dc621deaee2b9b1569b704d6b94df28a46a"
+          }
+        },
+        {
+          "client_id": "891279363167-m1ff5vnhqcd0nth3md2dvaisrsivvfre.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHRbsjVbmROL5XVgxHUC49pugOlI62PjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "891279363167-m1ff5vnhqcd0nth3md2dvaisrsivvfre.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
