@@ -195,7 +195,7 @@ class AllCategoriesScreen extends StatelessWidget {
                 ),
               ),
               
-              // Promo Spesial Banner
+             // Promo Spesial Banner
               Padding(
                 padding: EdgeInsets.all(horizontalPadding),
                 child: Container(
@@ -209,30 +209,33 @@ class AllCategoriesScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        // Teks promo
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text(
-                              'Promo Spesial',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        Expanded(  // This will make sure the text does not overflow
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Text(
+                                'Promo Spesial',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Dapatkan diskon hingga 50% untuk produk pilihan',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
+                              SizedBox(height: 4),
+                              Text(
+                                'Dapatkan diskon hingga 50% untuk produk pilihan',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         
                         // Tombol Lihat

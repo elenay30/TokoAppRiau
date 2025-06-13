@@ -1,4 +1,4 @@
-// File: lib/screens/transaction_screen.dart - NO STREAMBUILDER VERSION
+// File: lib/screens/transaction_screen.dart - MANUAL REFRESH VERSION
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +23,6 @@ class TransactionScreen extends StatefulWidget {
 class _TransactionScreenState extends State<TransactionScreen> {
   int _selectedFilterIndex = 0;
   bool _isRefreshing = false;
-  bool _hasInitialized = false; // TAMBAHAN: Flag untuk prevent multiple init
 
   final List<List<models.TransactionStatus>> _filterStatusMap = [
     [], // Semua
@@ -35,11 +34,20 @@ class _TransactionScreenState extends State<TransactionScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔄 TransactionScreen initState - Starting initial load...');
+    print('🔄 TransactionScreen initState - NO auto refresh');
     
-    // FIXED: Initialize hanya sekali
-    if (!_hasInitialized) {
-      _hasInitialized = true;
+    // REMOVED: Auto refresh on init
+    // Sekarang hanya menampilkan data yang sudah ada di service
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // OPTIONAL: Hanya refresh jika diminta melalui route arguments
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (arguments != null && arguments['forceRefresh'] == true) {
+      print('🔄 Force refresh requested from route arguments');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _refreshTransactions();
@@ -48,11 +56,11 @@ class _TransactionScreenState extends State<TransactionScreen> {
     }
   }
 
-  // SIMPLIFIED: Method untuk refresh tanpa streaming
+  // SIMPLIFIED: Method untuk refresh manual saja
   Future<void> _refreshTransactions() async {
     if (!mounted || _isRefreshing) return;
     
-    print('🔄 Starting transaction refresh...');
+    print('🔄 Manual refresh started...');
     setState(() {
       _isRefreshing = true;
     });
@@ -102,8 +110,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
     }
   }
 
-  // REMOVED: didChangeDependencies untuk menghindari loop
-
   // Safe currency formatting
   String _formatCurrency(double amount) {
     try {
@@ -147,9 +153,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     return Consumer2<TransactionService, CartProvider>(
       builder: (context, transactionService, cartProvider, child) {
-        // SIMPLIFIED: Langsung ambil data dari service tanpa StreamBuilder
+        // SIMPLIFIED: Langsung ambil data dari service tanpa loading state yang kompleks
         List<models.Transaction> allTransactions = transactionService.transactions;
-        bool isLoading = transactionService.isLoading || _isRefreshing;
+        bool isServiceLoading = transactionService.isLoading;
+        bool isManualRefreshing = _isRefreshing;
 
         // Filter transaksi berdasarkan _selectedFilterIndex
         List<models.Transaction> displayedTransactions;
@@ -165,7 +172,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         print('🔍 Total transactions: ${allTransactions.length}');
         print('🔍 Displayed transactions: ${displayedTransactions.length}');
         print('🔍 Selected filter: $_selectedFilterIndex');
-        print('🔍 Is loading: $isLoading');
+        print('🔍 Service loading: $isServiceLoading, Manual refreshing: $isManualRefreshing');
 
         // Cek apakah ada item di cart
         bool hasCartItems = cartProvider.itemCount > 0;
@@ -211,8 +218,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
             // Refresh button di app bar
             actions: [
               IconButton(
-                onPressed: isLoading ? null : _refreshTransactions,
-                icon: isLoading 
+                onPressed: isManualRefreshing ? null : _refreshTransactions,
+                icon: isManualRefreshing 
                     ? SizedBox(
                         width: 20,
                         height: 20,
@@ -262,7 +269,33 @@ class _TransactionScreenState extends State<TransactionScreen> {
                 // Main content
                 Column(
                   children: [
-                    // Debug info panel (REMOVED untuk production)
+                    // IMPROVED: Info panel untuk user guidance
+                    if (allTransactions.isEmpty && !isServiceLoading && !isManualRefreshing) ...[
+                      Container(
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue[700], size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Tarik ke bawah atau tekan tombol refresh untuk memuat pesanan terbaru',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     
                     // Filter chips - tampilkan jika ada transaksi
                     if (allTransactions.isNotEmpty) ...[
@@ -288,7 +321,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                     
                     // Content area
                     Expanded(
-                      child: isLoading
+                      child: isManualRefreshing
                           ? Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -551,6 +584,27 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       borderRadius: BorderRadius.circular(25),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                ),
+              ),
+              
+              // TAMBAHAN: Manual refresh button untuk empty state
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _refreshTransactions,
+                icon: Icon(Icons.refresh, color: primaryColor, size: 18),
+                label: Text(
+                  'Muat Pesanan',
+                  style: GoogleFonts.poppins(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: primaryColor.withOpacity(0.3)),
                   ),
                 ),
               ),

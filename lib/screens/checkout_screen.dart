@@ -1955,21 +1955,7 @@ void _showSuccessModal(
                      ),
                    ),
                    const SizedBox(width: 6),
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                     decoration: BoxDecoration(
-                       color: Colors.green,
-                       borderRadius: BorderRadius.circular(8),
-                     ),
-                     child: Text(
-                       'GRATIS',
-                       style: GoogleFonts.poppins(
-                         color: Colors.white,
-                         fontWeight: FontWeight.bold,
-                         fontSize: 10,
-                       ),
-                     ),
-                   ),
+                
                  ],
                ),
                style: TextButton.styleFrom(

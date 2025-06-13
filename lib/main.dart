@@ -1,4 +1,4 @@
-// File: lib/main.dart - PASTIKAN IMPORT INI ADA
+// File: lib/main.dart - UPDATED dengan NotificationProvider
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,8 @@ import 'firebase_options.dart';
 // Import Providers
 import 'providers/cart_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/profile_provider.dart'; // TAMBAHAN
+import 'providers/notification_provider.dart'; // TAMBAHAN
 
 // Import Services
 import 'services/transaction_service.dart';
@@ -44,14 +46,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // PERBAIKAN: Firebase initialization dengan error handling yang lebih baik
+    // Firebase initialization dengan error handling yang lebih baik
     print('🔥 Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('✅ Firebase initialized successfully');
     
-    // PERBAIKAN: Initialize product data dengan error handling individual
+    // Initialize product data dengan error handling individual
     print('📦 Initializing product data...');
     try {
       // Initialize each data script individually to catch specific errors
@@ -96,14 +98,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // PERBAIKAN: AuthProvider dengan error handling
+        // URUTAN PENTING: AuthProvider harus pertama
         ChangeNotifierProvider<AuthProvider>(
           create: (context) {
             try {
+              print('🔐 Creating AuthProvider...');
               return AuthProvider();
             } catch (e) {
               print('❌ AuthProvider creation error: $e');
-              // Return basic AuthProvider yang tidak akan crash
               return AuthProvider();
             }
           },
@@ -113,6 +115,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<CartProvider>(
           create: (context) {
             try {
+              print('🛒 Creating CartProvider...');
               return CartProvider();
             } catch (e) {
               print('❌ CartProvider creation error: $e');
@@ -121,14 +124,43 @@ class MyApp extends StatelessWidget {
           },
         ),
         
+        // TAMBAHAN: ProfileProvider bergantung pada AuthProvider
+        ChangeNotifierProvider<ProfileProvider>(
+          create: (context) {
+            try {
+              print('👤 Creating ProfileProvider...');
+              return ProfileProvider();
+            } catch (e) {
+              print('❌ ProfileProvider creation error: $e');
+              return ProfileProvider();
+            }
+          },
+        ),
+        
         // TransactionService untuk checkout
         ChangeNotifierProvider<TransactionService>(
           create: (context) {
             try {
+              print('💳 Creating TransactionService...');
               return TransactionService();
             } catch (e) {
               print('❌ TransactionService creation error: $e');
               return TransactionService();
+            }
+          },
+        ),
+        
+        // TAMBAHAN: NotificationProvider harus terakhir (bergantung pada AuthProvider)
+        ChangeNotifierProvider<NotificationProvider>(
+          create: (context) {
+            try {
+              print('🔔 Creating NotificationProvider...');
+              final provider = NotificationProvider();
+              // Jangan initialize langsung di sini, biarkan screen yang handle
+              return provider;
+            } catch (e) {
+              print('❌ NotificationProvider creation error: $e');
+              return NotificationProvider();
             }
           },
         ),
@@ -141,9 +173,7 @@ class MyApp extends StatelessWidget {
           primaryColor: const Color(0xFF2D7BEE),
           scaffoldBackgroundColor: Colors.white,
           fontFamily: 'Poppins',
-          // PERBAIKAN: Tambahkan useMaterial3 untuk compatibility
           useMaterial3: true,
-          // PERBAIKAN: Improve color scheme
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF2D7BEE),
             brightness: Brightness.light,
@@ -174,7 +204,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
         home: const SplashScreen(),
-        // PERBAIKAN: Route handling dengan error handling
         onGenerateRoute: (settings) {
           try {
             switch (settings.name) {
@@ -185,7 +214,12 @@ class MyApp extends StatelessWidget {
               case '/register':
                 return MaterialPageRoute(builder: (context) => const RegisterScreen());
               case '/main':
-                return MaterialPageRoute(builder: (context) => const MainScreen());
+                // PERBAIKAN: Handle arguments untuk MainScreen
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (context) => const MainScreen(),
+                  settings: RouteSettings(name: '/main', arguments: args),
+                );
               case '/home':
                 return MaterialPageRoute(builder: (context) => const HomeScreen());
               case '/food_category':
@@ -207,11 +241,26 @@ class MyApp extends StatelessWidget {
               case '/detail_promo':
                 return MaterialPageRoute(builder: (context) => const DetailPromoScreen());
               case '/cart':
-                return MaterialPageRoute(builder: (context) => const CartScreen());
+                // PERBAIHAN: Handle arguments untuk CartScreen
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (context) => const CartScreen(),
+                  settings: RouteSettings(name: '/cart', arguments: args),
+                );
               case '/checkout':
-                return MaterialPageRoute(builder: (context) => const CheckoutScreen());
+                // PERBAIKAN: Handle arguments untuk CheckoutScreen
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (context) => const CheckoutScreen(),
+                  settings: RouteSettings(name: '/checkout', arguments: args),
+                );
               case '/transaction':
-                return MaterialPageRoute(builder: (context) => const TransactionScreen());
+                // PERBAIKAN: Handle arguments untuk TransactionScreen
+                final args = settings.arguments as Map<String, dynamic>?;
+                return MaterialPageRoute(
+                  builder: (context) => const TransactionScreen(),
+                  settings: RouteSettings(name: '/transaction', arguments: args),
+                );
               case '/setting':
                 return MaterialPageRoute(builder: (context) => const SettingScreen());
               case '/edit_profile':
@@ -235,7 +284,7 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // PERBAIKAN: Helper method untuk error route
+  // Helper method untuk error route
   MaterialPageRoute _buildErrorRoute(String routeName, {String? error}) {
     return MaterialPageRoute(
       builder: (context) => Scaffold(
@@ -273,13 +322,21 @@ class MyApp extends StatelessWidget {
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    'Error: $error',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: Colors.red[400],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
                     ),
-                    textAlign: TextAlign.center,
+                    child: Text(
+                      'Error: $error',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.red[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -292,6 +349,57 @@ class MyApp extends StatelessWidget {
                     style: GoogleFonts.poppins(),
                   ),
                 ),
+                const SizedBox(height: 8),
+                // TAMBAHAN: Debug button untuk melihat available providers
+                if (error != null)
+                  TextButton(
+                    onPressed: () {
+                      // Debug: Print available providers
+                      try {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        print('✅ AuthProvider available: ${authProvider != null}');
+                      } catch (e) {
+                        print('❌ AuthProvider not available: $e');
+                      }
+                      
+                      try {
+                        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+                        print('✅ CartProvider available: ${cartProvider != null}');
+                      } catch (e) {
+                        print('❌ CartProvider not available: $e');
+                      }
+                      
+                      try {
+                        final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+                        print('✅ NotificationProvider available: ${notificationProvider != null}');
+                      } catch (e) {
+                        print('❌ NotificationProvider not available: $e');
+                      }
+                      
+                      try {
+                        final transactionService = Provider.of<TransactionService>(context, listen: false);
+                        print('✅ TransactionService available: ${transactionService != null}');
+                      } catch (e) {
+                        print('❌ TransactionService not available: $e');
+                      }
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Check console for provider availability debug info',
+                            style: GoogleFonts.poppins(fontSize: 12),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Debug Providers',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.orange[600],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

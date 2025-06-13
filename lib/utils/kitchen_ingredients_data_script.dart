@@ -133,7 +133,7 @@ class KitchenIngredientsDataScript {
       'updatedAt': FieldValue.serverTimestamp(),
     },
     {
-      'name': 'Tepung Terigu Segitiga',
+      'name': 'Tepung Segitiga',
       'category': 'Bahan Dapur',
       'price': 12000,
       'originalPrice': 14000,

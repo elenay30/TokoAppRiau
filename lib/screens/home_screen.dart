@@ -1,4 +1,4 @@
-// File: lib/screens/home_screen.dart
+// File: lib/screens/home_screen.dart - Updated dengan Real-time Notifications
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +9,7 @@ import 'all_categories_screen.dart';
 import 'ramadhan_products_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/notification_provider.dart'; // TAMBAHAN: Import NotificationProvider
 import 'kitchen_ingredients_category_screen.dart';
 import 'drinks_category_screen.dart';
 import '../services/product_service.dart';
@@ -47,6 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _initializeRamadhanData();
+    
+    // TAMBAHAN: Initialize notifications saat HomeScreen dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isLoggedIn) {
+        context.read<NotificationProvider>().initializeNotifications();
+      }
+    });
   }
 
   @override
@@ -218,52 +227,57 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       Row(
                         children: [
-                          Stack(
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: secondaryColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    Icons.notifications_none_rounded,
-                                    color: primaryColor,
-                                  ),
-                                  iconSize: isSmallScreen ? 22 : 24,
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const NewsScreen(
-                                          showBackButton: true,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              if (NewsScreen.notificationCount > 0)
-                                Positioned(
-                                  right: 6,
-                                  top: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
+                          // UPDATED: Real-time Notification Button
+                          Consumer<NotificationProvider>(
+                            builder: (context, notificationProvider, child) {
+                              return Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: secondaryColor,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Text(
-                                      '${NewsScreen.notificationCount}',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.notifications_none_rounded,
+                                        color: primaryColor,
                                       ),
+                                      iconSize: isSmallScreen ? 22 : 24,
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) => const NewsScreen(
+                                              showBackButton: true,
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
-                                ),
-                            ],
+                                  // UPDATED: Real-time unread count badge
+                                  if (notificationProvider.unreadCount > 0)
+                                    Positioned(
+                                      right: 6,
+                                      top: 6,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '${notificationProvider.unreadCount > 99 ? '99+' : notificationProvider.unreadCount}',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

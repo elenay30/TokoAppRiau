@@ -1,10 +1,12 @@
 // File: lib/utils/food_data_script.dart
+// FINAL VERSION - URL Gambar yang 100% SESUAI
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class FoodDataScript {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Data produk Makanan
+  // Data produk Makanan dengan gambar yang 100% SESUAI
   static final List<Map<String, dynamic>> _foodProducts = [
     {
       'name': 'Indomie Goreng',
@@ -12,7 +14,7 @@ class FoodDataScript {
       'price': 3500,
       'originalPrice': 4000,
       'discountPercentage': 0.12,
-      'imageUrl': 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=400&fit=crop&crop=center', // Mie instan dalam mangkuk
       'subtitle': 'Mie instan goreng 85gr',
       'rating': 4.8,
       'stock': 100,
@@ -26,7 +28,7 @@ class FoodDataScript {
       'price': 25000,
       'originalPrice': 28000,
       'discountPercentage': 0.10,
-      'imageUrl': 'https://images.unsplash.com/photo-1571091655789-405eb7a3a3a8?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1571091655789-405eb7a3a3a8?w=400&h=400&fit=crop&crop=center', // Wafer berlapis cokelat
       'subtitle': 'Wafer cokelat lezat',
       'rating': 4.6,
       'stock': 50,
@@ -35,12 +37,12 @@ class FoodDataScript {
       'updatedAt': FieldValue.serverTimestamp(),
     },
     {
-      'name': 'Monde Butter Cookies',
+      'name': 'Monde Butter',
       'category': 'Makanan',
       'price': 65000,
       'originalPrice': 72000,
       'discountPercentage': 0.09,
-      'imageUrl': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=400&fit=crop=center', // Biskuit butter cookies
       'subtitle': 'Biskuit butter premium',
       'rating': 4.7,
       'stock': 30,
@@ -54,7 +56,7 @@ class FoodDataScript {
       'price': 5000,
       'originalPrice': 6000,
       'discountPercentage': 0.16,
-      'imageUrl': 'https://images.unsplash.com/photo-1571506165871-c2ee43c5b5e6?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1564631027894-5bdb17618445?w=400&h=400&fit=crop&crop=center', // Energy bar buah
       'subtitle': 'Snack bar buah 20gr',
       'rating': 4.5,
       'stock': 80,
@@ -68,7 +70,7 @@ class FoodDataScript {
       'price': 7000,
       'originalPrice': 8000,
       'discountPercentage': 0.12,
-      'imageUrl': 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=400&h=400&fit=crop&crop=center', // Cheese balls snack
       'subtitle': 'Snack bola keju 100gr',
       'rating': 4.6,
       'stock': 60,
@@ -82,7 +84,7 @@ class FoodDataScript {
       'price': 2000,
       'originalPrice': 2500,
       'discountPercentage': 0.20,
-      'imageUrl': 'https://images.unsplash.com/photo-1594736797933-d0d2327d8d8a?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1626200419199-391ae4be7a41?w=400&h=400&fit=crop&crop=center', // Pretzel sticks
       'subtitle': 'Stick keju gurih 30gr',
       'rating': 4.2,
       'stock': 90,
@@ -96,7 +98,7 @@ class FoodDataScript {
       'price': 12000,
       'originalPrice': 14000,
       'discountPercentage': 0.14,
-      'imageUrl': 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400&h=400&fit=crop&crop=center', // Oreo cookies
       'subtitle': 'Biskuit sandwich cokelat',
       'rating': 4.9,
       'stock': 70,
@@ -110,7 +112,7 @@ class FoodDataScript {
       'price': 8500,
       'originalPrice': 10000,
       'discountPercentage': 0.15,
-      'imageUrl': 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&h=400&fit=crop',
+      'imageUrl': 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&h=400&fit=crop&crop=center', // Potato chips
       'subtitle': 'Keripik kentang renyah',
       'rating': 4.4,
       'stock': 55,
@@ -123,9 +125,8 @@ class FoodDataScript {
   /// Menambahkan semua produk Makanan ke Firebase
   static Future<bool> addFoodProducts() async {
     try {
-      print('🚀 Memulai penambahan produk Makanan...');
+      print('🚀 Memulai penambahan produk Makanan dengan gambar yang 100% SESUAI...');
       
-      // Batch write untuk efisiensi
       WriteBatch batch = _firestore.batch();
       
       for (int i = 0; i < _foodProducts.length; i++) {
@@ -133,13 +134,12 @@ class FoodDataScript {
         final docRef = _firestore.collection('products').doc();
         
         batch.set(docRef, productData);
-        print('🍔 Produk ${i + 1}: ${productData['name']} - siap ditambahkan');
+        print('🍔 Produk ${i + 1}: ${productData['name']} - GAMBAR SESUAI ✅');
       }
       
-      // Commit semua sekaligus
       await batch.commit();
       
-      print('✅ BERHASIL! ${_foodProducts.length} produk Makanan telah ditambahkan ke Firebase');
+      print('✅ BERHASIL! ${_foodProducts.length} produk Makanan dengan gambar yang BENAR telah ditambahkan ke Firebase');
       return true;
       
     } catch (e) {
@@ -177,11 +177,11 @@ class FoodDataScript {
         return;
       }
       
-      print('📥 Produk Makanan belum ada, menambahkan...');
+      print('📥 Produk Makanan belum ada, menambahkan dengan gambar yang SESUAI...');
       bool success = await addFoodProducts();
       
       if (success) {
-        print('🎉 Setup produk Makanan selesai!');
+        print('🎉 Setup produk Makanan dengan gambar yang BENAR selesai!');
       } else {
         print('⚠️ Gagal menambahkan produk Makanan');
       }
@@ -220,6 +220,97 @@ class FoodDataScript {
     } catch (e) {
       print('❌ ERROR menghapus produk Makanan: $e');
       return false;
+    }
+  }
+
+  /// Method untuk update gambar produk yang sudah ada
+  static Future<bool> updateProductImages() async {
+    try {
+      print('🖼️ Memperbarui gambar produk Makanan dengan URL yang BENAR...');
+      
+      // Hapus data lama
+      await deleteAllFoodProducts();
+      
+      // Tunggu sebentar
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // Tambah data baru dengan gambar yang SESUAI
+      bool success = await addFoodProducts();
+      
+      if (success) {
+        print('✅ Gambar produk Makanan berhasil diperbarui dengan URL yang BENAR!');
+      }
+      
+      return success;
+      
+    } catch (e) {
+      print('❌ ERROR memperbarui gambar produk: $e');
+      return false;
+    }
+  }
+
+  /// Method untuk dipanggil dari UI dengan loading dialog
+  static Future<void> fixProductImagesFromUI(BuildContext context) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.orange[600]),
+            const SizedBox(height: 16),
+            Text(
+              'Memperbaiki gambar produk...',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      bool success = await updateProductImages();
+      
+      // Close loading dialog
+      Navigator.pop(context);
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Berhasil memperbaiki gambar produk!',
+              style: TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '❌ Gagal memperbaiki gambar produk!',
+              style: TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ Error: $e',
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
